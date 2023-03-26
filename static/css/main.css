@@ -1,0 +1,53 @@
+body{
+    background-color: rgb(200, 200, 220);
+    height: 100%;
+    display: grid;
+}
+
+.center{
+    display: flex;
+    justify-self: center;
+    justify-content: center;
+    align-self: center;
+
+    height: 100%;
+    width: 100%;
+}
+
+.main_container{
+    background-color: rgb(33, 57, 95);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    height: 50%;
+    width: 40%;
+    padding: 50px;
+    margin: auto;
+
+    border: none;
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+}
+
+input{
+    background-color: rgb(53, 77, 115);
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19) inset; 
+    border: none;
+    
+    box-sizing: border-box;
+    -moz-box-sizing: border-box;
+
+    position: absolute;
+    display: flex;
+    text-align: center;
+    justify-content: center;
+    justify-self: center;
+
+    height: 8.56%;
+    width: 127.8%;
+    transition: 0.5s;
+}
+
+input:hover{
+    transform: scale(105%);
+}
