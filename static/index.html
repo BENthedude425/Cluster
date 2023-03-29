@@ -3,14 +3,16 @@
 <html style="height:100%">
     <head>
         <link rel="stylesheet" type="text/css" href="css/main.css">
+        <script src="js/login.js"></script>
     </head>
     <body>
         <div class="center">
             <div class="main_container">
-                <form action="/api/login" method="post" style="height: 80%; padding: 20%; position: relative; display: grid;">
-                    <input placeholder="username" name="username" type="text" style="top:15%"/>
-                    <input placeholder="password"  name="password" type="password" style="top:30%"/>
-                    <input value="Proceed" type="submit" style="bottom:10%;"/>
+                <form style="height: 80%; padding: 20%; position: relative; display: grid;">
+                    <input placeholder="username" id="FormUsername" name="username" type="text" style="top:15%"/>
+                    <input placeholder="password" id="FormPassword" name="password" type="password" style="top:30%"/>
+                    
+                    <input value="Proceed" type="button" onclick="Login()" style="bottom:10%;"/>
                 </form>
             </div>
         </div>

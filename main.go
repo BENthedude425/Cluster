@@ -2,10 +2,12 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io/fs"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"strings"
@@ -13,13 +15,12 @@ import (
 
 const DataFilesPath = "data/"
 const WebServerPort = "8080"
-const DebugMode = false
+
+var DebugMode = true
 
 var EssentialFiles = []string{
 	"Users.Json",
-	"meow.txt",
-	"sex.txt",
-	"adf",
+	"Debug.txt",
 }
 
 type UserData struct {
@@ -48,7 +49,7 @@ func DebugLog(message string, label string, EXTRAPARAMS ...string) {
 	LogErr(err)
 
 	if logtype == "" {
-		logtype = "LOG"
+		logtype = "INFO"
 	}
 
 	if alwayslog == "" {
@@ -60,17 +61,105 @@ func DebugLog(message string, label string, EXTRAPARAMS ...string) {
 	}
 }
 
-func CheckAuth(auth *http.Cookie, authErr error) bool {
-	if authErr != nil {
-		return false
+func CheckUserExists(Username string, Password string) (bool, error) {
+	Users, err := ReadUserFile()
+
+	if err != nil {
+		return false, err
 	}
-	authvalue := auth.Value
-	fakeauth := "1"
-	return authvalue == fakeauth
+
+	DebugLog("\n\n\n\n\n\n\n\n", "CheckUserExists", "")
+
+	for i := 0; i < len(Users); i++ {
+		SelectedUser := Users[i]
+		DebugLog(fmt.Sprintf("%s : %s", SelectedUser.Password, Password), "CheckUserExists")
+
+		if SelectedUser.Username == Username && SelectedUser.Password == Password {
+			DebugLog(fmt.Sprintf("Found User! Logged in as %s", Username), "CheckUserExists")
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
-func GenerateNewAuthToken(username string) string {
-	return "NewAuthToken"
+func HashString(data string) [32]byte {
+	return sha256.Sum256([]byte(data))
+}
+
+func CheckAuth(auth *http.Cookie, AuthCookieErr error) (bool, error) {
+	if AuthCookieErr != nil {
+		return false, fmt.Errorf("Failed to recieve the AuthToken cookie")
+	}
+
+	Users, err := ReadUserFile()
+
+	if err != nil {
+		return false, err
+	}
+
+	for i := 0; i < len(Users); i++ {
+		SelectedUser := Users[i]
+		if SelectedUser.AuthToken == auth.Value {
+			return true, nil
+		}
+	}
+	return false, fmt.Errorf("Auth token is invalid")
+}
+
+func GetUserFromFile(username string) (UserData, error) {
+	var User UserData
+	Users, err := ReadUserFile()
+
+	if err != nil {
+		return User, err
+	}
+
+	for i := 0; i < len(Users); i++ {
+		SelectedUser := Users[i]
+		if SelectedUser.Username == username {
+			User = Users[i]
+			return User, nil
+		}
+	}
+	return User, fmt.Errorf("Could not find user in database")
+}
+
+func GenerateNewAuthToken(username string) (string, error) {
+	var NewAuthToken string
+	charset := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
+
+	Users, err := ReadUserFile()
+
+	if err != nil {
+		return "nil", err
+	}
+
+	// Generate new auth token
+	for i := 0; i < 32; i++ {
+		NewAuthToken += string(charset[rand.Intn(len(charset))])
+	}
+
+	for i := 0; i < len(Users); i++ {
+		SelectedUser := Users[i]
+		fmt.Print(SelectedUser.Username)
+		if SelectedUser.Username == username {
+			Users[i].AuthToken = NewAuthToken
+
+			BytesBuffer := new(bytes.Buffer)
+			err = json.NewEncoder(BytesBuffer).Encode(Users)
+			UsersBytes := BytesBuffer.Bytes()
+
+			if err != nil {
+				return "", err
+			}
+
+			os.WriteFile(GetFilePath("Users.json"), UsersBytes, fs.ModeAppend)
+			DebugLog("Saved new auth token into the file", "GenerateNewAuthToken")
+			return NewAuthToken, nil
+		}
+	}
+	return "", nil
 }
 
 func GetFilePath(Filename string) string {
@@ -78,11 +167,14 @@ func GetFilePath(Filename string) string {
 }
 
 func AddUserToDatabase(User UserData) error {
-	Users, err := ReadUserFile("Users.json")
+	Users, err := ReadUserFile()
 
 	if err != nil {
 		return err
 	}
+
+	HashedPass := HashString(User.Password)
+	User.Password = fmt.Sprintf("%x", HashedPass)
 
 	NewUsersFile := append(Users, User)
 
@@ -106,8 +198,8 @@ func AddUserToDatabase(User UserData) error {
 	return nil
 }
 
-func ReadUserFile(Filename string) ([]UserData, error) {
-	FilePath := DataFilesPath + Filename
+func ReadUserFile() ([]UserData, error) {
+	FilePath := DataFilesPath + "Users.json"
 	File, err := os.Open(FilePath)
 	defer File.Close()
 
@@ -140,13 +232,13 @@ func ReadUserFile(Filename string) ([]UserData, error) {
 		return []UserData{}, err
 	}
 
-	DebugLog(fmt.Sprintf("Loaded: %s\nFrom: %s", FileContentsAsStruct, string(ContentsBuffer)), "[ReadUserFile]")
+	DebugLog(fmt.Sprintf("Loaded: %s\nFrom: %s", FileContentsAsStruct, string(ContentsBuffer)), "ReadUserFile")
 
 	if err != nil {
 		return []UserData{}, err
 	}
 
-	DebugLog(fmt.Sprintf("Found the File Contents of %s to be %s", Filename, FileContentsAsStruct), "[ReadUserFile]")
+	DebugLog(fmt.Sprintf("Found the File Contents of %s to be %s", FilePath, FileContentsAsStruct), "ReadUserFile")
 
 	return FileContentsAsStruct, nil
 }
@@ -161,8 +253,18 @@ func LogErr(err error) {
 
 func Servepage(Writer http.ResponseWriter, Request *http.Request) {
 	fmt.Printf("[%s] Request Recieved from %s for %s \n", Request.Method, Request.RemoteAddr, Request.RequestURI)
-	AuthToken, AuthErr := Request.Cookie("AuthToken")
-	AuthPassed := CheckAuth(AuthToken, AuthErr)
+	AuthToken, AuthCookieErr := Request.Cookie("AuthToken")
+
+	AuthPassed, err := CheckAuth(AuthToken, AuthCookieErr)
+
+	if DebugMode {
+		fmt.Print(err)
+		fmt.Print("\n")
+	}
+
+	if err != nil {
+		LogErr(err)
+	}
 
 	if Request.RequestURI == "/" {
 		Request.RequestURI = "/index.html"
@@ -190,19 +292,39 @@ func HandleApiRequest(Writer http.ResponseWriter, Request *http.Request) {
 		if Request.RequestURI == "/api/login" {
 			Username := Request.PostFormValue("username")
 			Password := Request.PostFormValue("password")
+			HashedPassword := fmt.Sprintf("%x", sha256.Sum256([]byte(Password)))
 
 			fmt.Printf("Incoming username and password: [%s,%s]\n", Username, Password)
 
+			LoginSucess, err := CheckUserExists(Username, HashedPassword)
+
+			if err != nil {
+				return
+			}
+
 			// Check Username and password against database
-			if Username == "BENthedude425" && Password == "rawr" {
+			if LoginSucess {
 				// generate a new auth token for the user and then send it back to be stored in cookies
 
-				NewAuthToken := GenerateNewAuthToken("BENthedude425")
+				NewAuthToken, err := GenerateNewAuthToken("BENthedude425")
+				LogErr(err)
 
-				fmt.Fprintf(Writer, "{{'sucess': true}, {'AuthToken':'%s'}", NewAuthToken)
-				http.Redirect(Writer, Request, "/mainpage.html", 301)
+				var ResponseData = [][]string{
+					{"sucess", "true"},
+					{"AuthToken", NewAuthToken},
+					{"Redirect", "/mainpage.html"},
+				}
+
+				Writer.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(Writer).Encode(ResponseData)
 			} else {
-				http.Redirect(Writer, Request, "/index.html", 301)
+
+				var ResponseData = [][]string{
+					{"sucess", "false"},
+				}
+
+				Writer.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(Writer).Encode(ResponseData)
 			}
 		}
 	} else {
@@ -211,12 +333,13 @@ func HandleApiRequest(Writer http.ResponseWriter, Request *http.Request) {
 }
 
 func CheckEssentialFiles() error {
-	fmt.Printf("[SYSTEM] Checking FileSystem integrity\n")
+	DebugLog("Checking FileSystem integrity", "CheckEssentialFiles", "SYSTEM")
+
 	_, err := os.Stat(DataFilesPath)
 
 	// Check the common data directory
 	if os.IsNotExist(err) {
-		fmt.Print("Created new data directory\n")
+		DebugLog("Created new directory", "CheckEssentialFiles", "SYSTEM")
 		err2 := os.Mkdir(DataFilesPath, os.ModeDir)
 		if err2 != nil {
 			return err2
@@ -227,7 +350,7 @@ func CheckEssentialFiles() error {
 	for i := 0; i < len(EssentialFiles); i++ {
 		FileName := EssentialFiles[i]
 		FullFilePath := GetFilePath(FileName)
-		fmt.Printf("[INFO] Checking for %s ...", FullFilePath)
+		DebugLog(fmt.Sprintf("Checking for %s ...", FullFilePath), "CheckEssentialFiles")
 		_, err = os.Stat(FullFilePath)
 		if os.IsNotExist(err) {
 			fmt.Printf("[WARN]\n")
@@ -246,6 +369,23 @@ func CheckEssentialFiles() error {
 	return nil
 }
 
+func ReadFile(FileName string) (string, error) {
+	FullFilePath := GetFilePath(FileName)
+	File, err := os.Open(FullFilePath)
+	FileSystem, err := os.Stat(FullFilePath)
+	FileSize := FileSystem.Size()
+	FileBuffer := make([]byte, FileSize)
+
+	_, err = File.Read(FileBuffer)
+	File.Close()
+
+	if err != nil {
+		return "", err
+	}
+
+	return string(FileBuffer), nil
+}
+
 func main() {
 	err := CheckEssentialFiles()
 	if err != nil {
@@ -253,10 +393,22 @@ func main() {
 		return
 	}
 
+	DebugFileContents, err := ReadFile("Debug.txt")
+
+	if err != nil {
+		fmt.Print(err)
+	}
+
+	if DebugFileContents == "true" {
+		DebugMode = true
+	} else {
+		DebugMode = false
+	}
+
 	DebugLog(fmt.Sprintf("Debugging mode is set to %t", DebugMode), "MAIN", "INFO", "true")
 
 	fmt.Printf("---------------Initialised---------------\n")
-	Test()
+
 	// Pass handlers
 	http.HandleFunc("/api/", HandleApiRequest)
 	http.HandleFunc("/", Servepage)
@@ -265,7 +417,6 @@ func main() {
 	if err := http.ListenAndServe(fmt.Sprintf(":%s", WebServerPort), nil); err != nil {
 		log.Fatal((err))
 	}
-
 }
 
 func Test() {
