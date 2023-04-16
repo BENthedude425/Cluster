@@ -1,7 +1,13 @@
+html{
+    height: 100%;
+}
+
 body{
-    background-color: rgb(200, 200, 220);
+    background-color: rgb(83, 83, 231);
     height: 100%;
     display: grid;
+    z-index: 0;
+    position: relative;
 }
 
 .center{
@@ -15,27 +21,39 @@ body{
 }
 
 .main_container{
-    background-color: rgb(33, 57, 95);
+    background-color: rgb(68,73,78);
+    color: white;
     display: flex;
     align-items: center;
-    justify-content: center;
-
+    text-align: center;
+    font-size: xx-large;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
     height: 50%;
-    width: 40%;
+    width: 30%;
     padding: 50px;
     margin: auto;
 
-    border: none;
+    border: solid black 2px;
+    border-radius: 2px;
     box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
 }
 
 input{
-    background-color: rgb(53, 77, 115);
+    background-color: rgb(46, 50, 53);
     box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19) inset; 
-    border: none;
+    border: solid black 2px;
+    border-radius: 2px;
     
     box-sizing: border-box;
     -moz-box-sizing: border-box;
+
+    color: white;
+    text: white;
+    
 
     position: absolute;
     display: flex;
@@ -44,10 +62,23 @@ input{
     justify-self: center;
 
     height: 8.56%;
-    width: 127.8%;
+    width: 70%;
     transition: 0.5s;
 }
 
 input:hover{
     transform: scale(105%);
+}
+
+
+::placeholder{
+    color:white;
+}
+
+td{
+    width: auto;
+}
+
+button{
+    background-image: linear-gradient(to bottom right, rgb(240, 100, 18),rgb(244, 59, 142) );
 }

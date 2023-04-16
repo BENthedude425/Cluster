@@ -1,11 +1,61 @@
 <!DOCTYPE html>
 <html>
     <head>
+        <link rel="stylesheet" type="text/css" href="css/main.css"/>
+        <link rel="stylesheet" type="text/css" href="css/sideNav.css"/>
+        <link rel='stylesheet' href='https://unpkg.com/css.gg@2.0.0/icons/css/menu-boxed.css'>
+        
+        <script src="js/sideNav.js"></script>
         <script src="js/login.js"></script>
     </head>
-    <body>
-        <button onclick="LogOut();">
-            Log out
-        </button>
+    <body style="padding: 0%; margin: 0%;" onload="CloseNav();">
+
+        <div id="SideNav" class="SideNav" style="width:15%;">
+            <div id="SideNavContent" style="overflow-x: hidden; height: 100%;">
+                <div style="padding: 5%">
+                    <b style="font-size: xx-large;">Da menu</b>
+                    <i class="gg-menu-boxed" onclick="ToggleNav()" style="margin: 0; align-self: baseline; float: right; transform: scale(2);"></i>
+                </div>            
+
+                <div id="NavCategories">
+                    <div id="FriendsList">
+                        <b>
+                            Friends >
+                        </b>
+                        <div id="example friend" onclick="SelectChat(this)" style="width:100%; margin-top: 10%;">
+                            <div>
+                                <img src="profilepics/profilepic.png">
+                                Diede3x0
+                            </div>
+                        </div>                   
+                    </div>
+
+                    <div id="GroupChats">
+                        <b>
+                            Group Chats >
+                        </b>
+                        <div id="example friend" onclick="SelectChat(this)" style="width:100%; margin-top: 10%;">
+                            <div>
+                                <img src="groupchatpics/test.png">
+                                SpecialGuys
+                            </div>
+                        </div> 
+                    </div>                    
+                </div>
+
+
+
+            </div>
+        </div>
+
+        
+
+        <div class="main_container" style="width: 80%">
+            <i class="gg-menu-boxed" onclick="ToggleNav()" style="margin: 0; align-self: baseline;"></i>
+            
+            <button onclick="LogOut()">
+                Log out
+            </button>
+        </div>
     </body>
 </html>

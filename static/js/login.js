@@ -1,3 +1,13 @@
+window.onload = function(){
+    var Form = document.getElementById("Login-Form");
+    Form.addEventListener("keydown", function (e) {
+        if (e.code === "Enter") {  //checks whether the pressed key is "Enter"
+            Login();
+        }
+    });
+
+}
+
 function Login(){
     var UsernameEntry = document.getElementById("FormUsername");
     var PasswordEntry = document.getElementById("FormPassword");
@@ -25,16 +35,15 @@ function Login(){
 
             var Sucess = ResponseDataSerialised[0][1];
 
-            if(Sucess){
+            if(Sucess == "true"){
                 var NewAuthToken = ResponseDataSerialised[1][1];
                 var RedirectURL = ResponseDataSerialised[2][1];
 
                 document.cookie = "AuthToken=" + NewAuthToken;
                 window.location.href = RedirectURL;
+            }else{
+                alert("Authentification failed ;/\nPlease try again and make sure credentials are correct!");
             }
-
-            console.log(ResponseDataSerialised);
-
         }
     }
 }

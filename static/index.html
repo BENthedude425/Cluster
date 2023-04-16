@@ -1,18 +1,19 @@
 <!DOCTYPE html>
 
-<html style="height:100%">
+<html>
     <head>
         <link rel="stylesheet" type="text/css" href="css/main.css">
         <script src="js/login.js"></script>
     </head>
     <body>
         <div class="center">
-            <div class="main_container">
-                <form style="height: 80%; padding: 20%; position: relative; display: grid;">
-                    <input placeholder="username" id="FormUsername" name="username" type="text" style="top:15%"/>
-                    <input placeholder="password" id="FormPassword" name="password" type="password" style="top:30%"/>
-                    
-                    <input value="Proceed" type="button" onclick="Login()" style="bottom:10%;"/>
+            <div class="main_container" style="justify-content: center;">
+                <form id="Login-Form" style="height: 80%; padding: 20%; position: relative; display: grid;">
+                    Login to online chat
+                    <input placeholder="username" id="FormUsername" name="username" type="text" style="top:30%"/>
+                    <input placeholder="password" id="FormPassword" name="password" type="password" style="top:45%"/>
+                
+                    <input value="Proceed" type="button" onclick="Login()" style="bottom:10%; background-image: linear-gradient(to bottom right, rgb(240, 100, 18),rgb(244, 59, 142) )"/>
                 </form>
             </div>
         </div>
