@@ -1,5 +1,9 @@
 package dataTypes
 
+type DBDataType interface {
+	UserInfo | ChatRoomInfo
+}
+
 type UserInfo struct {
 	UserID   int
 	Username string
@@ -7,6 +11,9 @@ type UserInfo struct {
 
 	AuthToken string
 }
+
+// Example
+type ChatRoomInfo struct{}
 
 type UserInterface interface {
 }

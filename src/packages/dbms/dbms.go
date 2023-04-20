@@ -1,6 +1,7 @@
 package dbms
 
 import (
+	"Go-Chat-App/src/packages/dataTypes"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -39,7 +40,7 @@ func ReadTable(TableName string) ([]byte, error) {
 	return FileContents, nil
 }
 
-func AppendDataToTable[T any](TableName string) error {
+func AppendDataToTable[T dataTypes.DBDataType](TableName string) error {
 	TableContents, err := ReadFile(TableName)
 
 	var result T
