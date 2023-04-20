@@ -49,8 +49,16 @@ function Login(){
 }
 
 function LogOut(){
-    document.cookie = "AuthToken=NONE";
-    document.location.href = "/index.html";
+    xhr = new XMLHttpRequest();
+    xhr.open("post", "/api/logout");
+    xhr.send();
+
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState == 4 || xhr.code == 404){
+            document.cookie = "AuthToken="
+            window.location.href = "index.html"
+        }
+    }
 }
 
 function GetCookie(CookieName){

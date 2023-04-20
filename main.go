@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -10,44 +9,45 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"packages/dataTypes"
 	"packages/dbms"
 	"strings"
 )
 
-const DataFilesPath = "data/"
-const WebServerPort = "8080"
+const DATAFILESPATH = "data/"
+const WEBSERVERPORT = "8080"
+const CHARSET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
 
 var DebugMode = true
 
-var x = map[string]string{
-	"S":    "cap letter",
-	"asdf": "words",
-}
-
 var EssentialFiles = map[string]string{
-	"USERSFILE":    "Users.Json",    // Stores User Credentials
-	"USERDATAFILE": "UserData.Json", // Stores User Data
-	"CHATSFILE":    "Chats.Json",    // Stores all chats
-	"DEBUGFILE":    "Debug.txt",     // Checks to see debug setting
+	"USERSFILE":    "Users.Json",          // Stores User Credentials
+	"USERDATAFILE": "StoredUserData.Json", // Stores User Data
+	"CHATSFILE":    "Chats.Json",          // Stores all chats
+	"DEBUGFILE":    "Debug.txt",           // Checks to see debug setting
 }
 
 type UserData struct {
-	UserID   int
-	Username string
-	Password string
+	FriendIDs         []int
+	FriendRequestsIDs []FriendRequest
+	Chats             []Chat
+}
 
-	AuthToken string
+type FriendRequest struct {
+	InitiatorID int
+	RecieverID  int
 }
 
 type Message struct {
 	Sender  string
 	Message string
-	time    string
+	Time    string
 }
 
 type Chat struct {
 	ChatID     string
-	Recipients []string
+	ChatName   string
+	Recipients []int
 	Messages   []Message
 }
 
@@ -96,7 +96,7 @@ func DebugLog(message string, label string, EXTRAPARAMS ...string) {
 }
 
 func CheckUserExists(Username string, Password string) (bool, error) {
-	Users, err := ReadUserFile()
+	Users, err := ReadUserTable()
 
 	Password = strings.Trim(Password, " ")
 
@@ -104,18 +104,31 @@ func CheckUserExists(Username string, Password string) (bool, error) {
 		return false, err
 	}
 
-	DebugLog("\n\n\n\n\n\n\n\n", "CheckUserExists", "")
-
 	for i := 0; i < len(Users); i++ {
 		SelectedUser := Users[i]
 
 		if SelectedUser.Username == Username && SelectedUser.Password == Password {
-			DebugLog(fmt.Sprintf("Found User! Logged in as %s", Username), "CheckUserExists")
+			DebugLog(fmt.Sprintf("Log in successful for: %s", Username), "CheckUserExists")
 			return true, nil
 		}
 	}
 
 	return false, nil
+}
+
+func FindUserFromID(ID int) (dataTypes.UserInfo, error) {
+	DebugLog(fmt.Sprintf("Searching for userID: %d", ID), "FindUserFromID")
+	Users, err := ReadUserTable()
+
+	for UserIndex := range Users {
+		User := Users[UserIndex]
+		if User.UserID == ID {
+			DebugLog(fmt.Sprintf("Found userID: %d", ID), "FindUserFromID")
+			return User, nil
+		}
+	}
+
+	return dataTypes.UserInfo{}, err
 }
 
 func HashString(data string) [32]byte {
@@ -127,7 +140,11 @@ func CheckAuth(auth *http.Cookie, AuthCookieErr error) (bool, error) {
 		return false, fmt.Errorf("Failed to recieve the AuthToken cookie")
 	}
 
-	Users, err := ReadUserFile()
+	if len(auth.Value) == 0 {
+		return false, nil
+	}
+
+	Users, err := ReadUserTable()
 
 	if err != nil {
 		return false, err
@@ -146,9 +163,9 @@ func CheckAuth(auth *http.Cookie, AuthCookieErr error) (bool, error) {
 	return false, nil
 }
 
-func GetUserFromFileWithUsername(username string) (UserData, error) {
-	var User UserData
-	Users, err := ReadUserFile()
+func GetUserFromFileWithUsername(username string) (dataTypes.UserInfo, error) {
+	var User dataTypes.UserInfo
+	Users, err := ReadUserTable()
 
 	if err != nil {
 		return User, err
@@ -164,10 +181,10 @@ func GetUserFromFileWithUsername(username string) (UserData, error) {
 	return User, fmt.Errorf("Could not find user in database")
 }
 
-func GetUserFromFileWithAuth(authToken string) (UserData, error) {
-	Users, err := ReadUserFile()
+func GetUserFromFileWithAuth(authToken string) (dataTypes.UserInfo, error) {
+	Users, err := ReadUserTable()
 	if err != nil {
-		return UserData{}, err
+		return dataTypes.UserInfo{}, err
 	}
 
 	for i := 0; i < len(Users); i++ {
@@ -177,14 +194,13 @@ func GetUserFromFileWithAuth(authToken string) (UserData, error) {
 		}
 	}
 
-	return UserData{}, fmt.Errorf("Could not find user from auth: %s", authToken)
+	return dataTypes.UserInfo{}, fmt.Errorf("Could not find user from auth: %s", authToken)
 }
 
 func GenerateNewAuthToken(username string) (string, error) {
 	var NewAuthToken string
-	charset := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
 
-	Users, err := ReadUserFile()
+	Users, err := ReadUserTable()
 
 	if err != nil {
 		return "nil", err
@@ -192,18 +208,15 @@ func GenerateNewAuthToken(username string) (string, error) {
 
 	// Generate new auth token
 	for i := 0; i < 32; i++ {
-		NewAuthToken += string(charset[rand.Intn(len(charset))])
+		NewAuthToken += string(CHARSET[rand.Intn(len(CHARSET))])
 	}
 
 	for i := 0; i < len(Users); i++ {
 		SelectedUser := Users[i]
-		fmt.Print(SelectedUser.Username)
 		if SelectedUser.Username == username {
 			Users[i].AuthToken = NewAuthToken
 
-			BytesBuffer := new(bytes.Buffer)
-			err = json.NewEncoder(BytesBuffer).Encode(Users)
-			UsersBytes := BytesBuffer.Bytes()
+			UsersBytes, err := json.MarshalIndent(Users, "", "	")
 
 			if err != nil {
 				return "", err
@@ -218,7 +231,7 @@ func GenerateNewAuthToken(username string) (string, error) {
 }
 
 func GenerateNewUserIDFromFile() int {
-	Users, err := ReadUserFile()
+	Users, err := ReadUserTable()
 	NewID := 0
 	FoundID := true
 	if err != nil {
@@ -251,12 +264,12 @@ func GenerateNewUserIDFromFile() int {
 }
 
 func GetFilePath(Filename string) string {
-	return DataFilesPath + Filename
+	return DATAFILESPATH + Filename
 }
 
-func AddUserToDatabase(User UserData) error {
+func AddUserToDatabase(User dataTypes.UserInfo) error {
 	UsernameExists := false
-	Users, err := ReadUserFile()
+	Users, err := ReadUserTable()
 
 	if err != nil {
 		return err
@@ -280,9 +293,7 @@ func AddUserToDatabase(User UserData) error {
 
 	NewUsersFile := append(Users, User)
 
-	FileContentsBytesBuffer := new(bytes.Buffer)
-	err = json.NewEncoder(FileContentsBytesBuffer).Encode(NewUsersFile)
-	FileContentsBytes := FileContentsBytesBuffer.Bytes()
+	FileContentsBytes, err := json.MarshalIndent(NewUsersFile, "", "	")
 
 	if err != nil {
 		return err
@@ -298,22 +309,24 @@ func AddUserToDatabase(User UserData) error {
 	return nil
 }
 
-func ReadUserFile() ([]UserData, error) {
-	var Users []UserData
-	FilePath := DataFilesPath + EssentialFiles["USERSFILE"]
+func ReadUserTable() ([]dataTypes.UserInfo, error) {
+	var Users []dataTypes.UserInfo
+	FilePath := GetFilePath(EssentialFiles["USERSFILE"])
 	UserBytes, err := dbms.ReadTable(FilePath)
 
 	if err != nil {
-		return []UserData{}, err
+		DebugLog("Failed to read the users table", "ReadUserTable", "error")
+		return []dataTypes.UserInfo{}, err
 	}
 
 	// Convert file contents into object
 	err = json.Unmarshal(UserBytes, &Users)
 	if err != nil {
-		return []UserData{}, err
+		DebugLog("Failed to load users table data into object notation", "ReadUserTable", "error")
+		return []dataTypes.UserInfo{}, err
 	}
 
-	DebugLog(fmt.Sprintf("Loaded: %d Users From: %s", len(Users), EssentialFiles["USERSFILE"]), "ReadUserFile")
+	DebugLog(fmt.Sprintf("Loaded: %d Users From: %s", len(Users), EssentialFiles["USERSFILE"]), "ReadUserTable")
 	return Users, nil
 }
 
@@ -333,12 +346,12 @@ func CreateFriendRequest(SenderUsername string, RecipientUsername string) error 
 func CheckEssentialFiles() error {
 	DebugLog("Checking FileSystem integrity", "CheckEssentialFiles", "checking")
 
-	_, err := os.Stat(DataFilesPath)
+	_, err := os.Stat(DATAFILESPATH)
 
 	// Check the common data directory
 	if os.IsNotExist(err) {
 		DebugLog("Created new directory", "CheckEssentialFiles", "checking")
-		err2 := os.Mkdir(DataFilesPath, os.ModeDir)
+		err2 := os.Mkdir(DATAFILESPATH, os.ModeDir)
 		if err2 != nil {
 			return err2
 		}
@@ -355,7 +368,7 @@ func CheckEssentialFiles() error {
 
 			_, err = os.Create(FullFilePath)
 			if err != nil {
-				fmt.Printf("[FAILED]\n")
+				DebugLog("FAILED", "CheckEssentialFiles")
 				return err
 			}
 			DebugLog("[OK]", "CheckEssentialFiles")
@@ -387,11 +400,12 @@ func ReadFile(FileName string) (string, error) {
 func main() {
 	err := CheckEssentialFiles()
 	if err != nil {
+		DebugLog("Failed to laod database!		Shutting down.", "CheckEssentialFiles", "error")
 		fmt.Printf("Failed to load database ;/\n%e\n\nShutting down.", err)
 		return
 	}
 
-	ReadUserFile()
+	Test()
 
 	DebugFileContents, err := ReadFile(EssentialFiles["DEBUGFILE"])
 
@@ -413,25 +427,16 @@ func main() {
 	http.HandleFunc("/api/", HandleApiRequest)
 	http.HandleFunc("/", Servepage)
 
-	fmt.Printf("Starting webserver on port %s\n", WebServerPort)
-	if err := http.ListenAndServe(fmt.Sprintf(":%s", WebServerPort), nil); err != nil {
+	fmt.Printf("Starting webserver on port %s\n", WEBSERVERPORT)
+	if err := http.ListenAndServe(fmt.Sprintf(":%s", WEBSERVERPORT), nil); err != nil {
 		log.Fatal((err))
 	}
 }
 
 func Test() {
-	NewUser := UserData{GenerateNewUserIDFromFile(), "PENIS HEAD", "meow", ""}
-	err := AddUserToDatabase(NewUser)
+	fmt.Println("Test")
 
-	if err != nil {
-		LogErr(err)
-	}
-
-	NewUser = UserData{GenerateNewUserIDFromFile(), "BENthedude425", "rawr", ""}
-	err = AddUserToDatabase(NewUser)
-	if err != nil {
-		LogErr(err)
-	}
+	dbms.AppendDataToTable(GetFilePath(EssentialFiles["USERSFILE"]))
 }
 
 func HandleApiRequest(Writer http.ResponseWriter, Request *http.Request) {
@@ -474,6 +479,31 @@ func HandleApiRequest(Writer http.ResponseWriter, Request *http.Request) {
 				json.NewEncoder(Writer).Encode(ResponseData)
 				return
 			}
+		case "logout":
+			AuthToken, AuthCookieErr := Request.Cookie("AuthToken")
+
+			if AuthCookieErr != nil {
+				return
+			}
+
+			Users, err := ReadUserTable()
+
+			if err != nil {
+				return
+			}
+
+			for UserIndex := range Users {
+				if Users[UserIndex].AuthToken == AuthToken.Value {
+					Users[UserIndex].AuthToken = ""
+					UserBytes, JsonErr := json.MarshalIndent(Users, "", "	")
+					if JsonErr != nil {
+						return
+					}
+					os.WriteFile(GetFilePath(EssentialFiles["USERSFILE"]), UserBytes, fs.ModeAppend)
+				}
+
+			}
+
 		case "FriendRequest":
 			RecipientUsername := Request.PostFormValue("RecipientUsername")
 			AuthToken, AuthCookieErr := Request.Cookie("AuthToken")
@@ -506,11 +536,6 @@ func Servepage(Writer http.ResponseWriter, Request *http.Request) {
 	AuthToken, AuthCookieErr := Request.Cookie("AuthToken")
 
 	AuthPassed, err := CheckAuth(AuthToken, AuthCookieErr)
-
-	if DebugMode {
-		fmt.Print(err)
-		fmt.Print("\n")
-	}
 
 	if err != nil {
 		LogErr(err)

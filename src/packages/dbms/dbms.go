@@ -2,6 +2,8 @@ package dbms
 
 import (
 	"encoding/json"
+	"fmt"
+	"log"
 	"os"
 )
 
@@ -26,10 +28,6 @@ func ReadFile(FileName string) ([]byte, error) {
 	return ContentsBuffer, err
 }
 
-func WriteTable(TableName string) {
-
-}
-
 func ReadTable(TableName string) ([]byte, error) {
 	FileContents, err := ReadFile(TableName)
 
@@ -39,4 +37,23 @@ func ReadTable(TableName string) ([]byte, error) {
 	}
 
 	return FileContents, nil
+}
+
+func AppendDataToTable(TableName string) error {
+	TableContents, err := ReadFile(TableName)
+
+	err = json.Unmarshal(TableContents, &CUSTOMSTRUCT)
+	fmt.Print(CUSTOMSTRUCT)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+	return err
+}
+
+func WriteTable(TableName string, Data any, DataType string) {
+	switch DataType {
+	case "UserInfo":
+
+	}
 }
