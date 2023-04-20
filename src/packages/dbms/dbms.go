@@ -32,18 +32,19 @@ func ReadTable(TableName string) ([]byte, error) {
 	FileContents, err := ReadFile(TableName)
 
 	// Check if the file contents can be initialised as an object
-	if !json.Valid(FileContents) || err != nil {
+	if err != nil || !json.Valid(FileContents) {
 		return []byte{}, err
 	}
 
 	return FileContents, nil
 }
 
-func AppendDataToTable(TableName string) error {
+func AppendDataToTable[T any](TableName string) error {
 	TableContents, err := ReadFile(TableName)
 
-	err = json.Unmarshal(TableContents, &CUSTOMSTRUCT)
-	fmt.Print(CUSTOMSTRUCT)
+	var result T
+	err = json.Unmarshal(TableContents, &result)
+	fmt.Print(result)
 
 	if err != nil {
 		log.Fatal(err)

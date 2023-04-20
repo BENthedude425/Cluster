@@ -1,6 +1,8 @@
 package main
 
 import (
+	"Go-Chat-App/src/packages/dataTypes"
+	"Go-Chat-App/src/packages/dbms"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -9,8 +11,6 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
-	"packages/dataTypes"
-	"packages/dbms"
 	"strings"
 )
 
@@ -436,7 +436,7 @@ func main() {
 func Test() {
 	fmt.Println("Test")
 
-	dbms.AppendDataToTable(GetFilePath(EssentialFiles["USERSFILE"]))
+	dbms.AppendDataToTable[dataTypes.UserInfo](GetFilePath(EssentialFiles["USERSFILE"]))
 }
 
 func HandleApiRequest(Writer http.ResponseWriter, Request *http.Request) {
