@@ -1,19 +1,42 @@
 package dataTypes
 
 type DBDataType interface {
-	UserInfo | ChatRoomInfo
+	UserInfo | Chat | TableEntry
+}
+
+type TableEntry struct {
+	ID   int
+	Data any
 }
 
 type UserInfo struct {
-	UserID   int
 	Username string
 	Password string
 
+	UserData  UserData
 	AuthToken string
 }
 
-// Example
-type ChatRoomInfo struct{}
+type UserData struct {
+	FriendIDs         []int
+	FriendRequestsIDs []FriendRequest
+	Chats             []Chat
+}
 
-type UserInterface interface {
+type FriendRequest struct {
+	InitiatorID int
+	RecieverID  int
+}
+
+type Message struct {
+	Sender  string
+	Message string
+	Time    string
+}
+
+type Chat struct {
+	ChatName   string
+	Admins     []int
+	Recipients []int
+	Messages   []Message
 }

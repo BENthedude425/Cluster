@@ -1,8 +1,6 @@
 package main
 
 import (
-	"Go-Chat-App/src/packages/dataTypes"
-	"Go-Chat-App/src/packages/dbms"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -11,6 +9,8 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"packages/dataTypes"
+	"packages/dbms"
 	"strings"
 )
 
@@ -21,46 +21,9 @@ const CHARSET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
 var DebugMode = true
 
 var EssentialFiles = map[string]string{
-	"USERSFILE":    "Users.Json",          // Stores User Credentials
-	"USERDATAFILE": "StoredUserData.Json", // Stores User Data
-	"CHATSFILE":    "Chats.Json",          // Stores all chats
-	"DEBUGFILE":    "Debug.txt",           // Checks to see debug setting
-}
-
-type UserData struct {
-	FriendIDs         []int
-	FriendRequestsIDs []FriendRequest
-	Chats             []Chat
-}
-
-type FriendRequest struct {
-	InitiatorID int
-	RecieverID  int
-}
-
-type Message struct {
-	Sender  string
-	Message string
-	Time    string
-}
-
-type Chat struct {
-	ChatID     string
-	ChatName   string
-	Recipients []int
-	Messages   []Message
-}
-
-func GetIndex(x int, array []string) (string, error) {
-	if len(array) == 0 {
-		return "", nil
-	}
-
-	if len(array)-1 >= x {
-		return array[x], nil
-	}
-
-	return "", fmt.Errorf("GetIndex: Could not get index")
+	"USERSFILE": "UsersData.Json", // Stores User Data
+	"CHATSFILE": "Chats.Json",     // Stores all chats
+	"DEBUGFILE": "Debug.txt",      // Checks to see debug setting
 }
 
 func DebugLog(message string, label string, EXTRAPARAMS ...string) {
@@ -95,252 +58,8 @@ func DebugLog(message string, label string, EXTRAPARAMS ...string) {
 	}
 }
 
-func CheckUserExists(Username string, Password string) (bool, error) {
-	Users, err := ReadUserTable()
-
-	Password = strings.Trim(Password, " ")
-
-	if err != nil {
-		return false, err
-	}
-
-	for i := 0; i < len(Users); i++ {
-		SelectedUser := Users[i]
-
-		if SelectedUser.Username == Username && SelectedUser.Password == Password {
-			DebugLog(fmt.Sprintf("Log in successful for: %s", Username), "CheckUserExists")
-			return true, nil
-		}
-	}
-
-	return false, nil
-}
-
-func FindUserFromID(ID int) (dataTypes.UserInfo, error) {
-	DebugLog(fmt.Sprintf("Searching for userID: %d", ID), "FindUserFromID")
-	Users, err := ReadUserTable()
-
-	for UserIndex := range Users {
-		User := Users[UserIndex]
-		if User.UserID == ID {
-			DebugLog(fmt.Sprintf("Found userID: %d", ID), "FindUserFromID")
-			return User, nil
-		}
-	}
-
-	return dataTypes.UserInfo{}, err
-}
-
 func HashString(data string) [32]byte {
 	return sha256.Sum256([]byte(data))
-}
-
-func CheckAuth(auth *http.Cookie, AuthCookieErr error) (bool, error) {
-	if AuthCookieErr != nil {
-		return false, fmt.Errorf("Failed to recieve the AuthToken cookie")
-	}
-
-	if len(auth.Value) == 0 {
-		return false, nil
-	}
-
-	Users, err := ReadUserTable()
-
-	if err != nil {
-		return false, err
-	}
-
-	if auth.Value == "NONE" {
-		return false, nil
-	}
-
-	for i := 0; i < len(Users); i++ {
-		SelectedUser := Users[i]
-		if SelectedUser.AuthToken == auth.Value {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-func GetUserFromFileWithUsername(username string) (dataTypes.UserInfo, error) {
-	var User dataTypes.UserInfo
-	Users, err := ReadUserTable()
-
-	if err != nil {
-		return User, err
-	}
-
-	for i := 0; i < len(Users); i++ {
-		SelectedUser := Users[i]
-		if SelectedUser.Username == username {
-			User = Users[i]
-			return User, nil
-		}
-	}
-	return User, fmt.Errorf("Could not find user in database")
-}
-
-func GetUserFromFileWithAuth(authToken string) (dataTypes.UserInfo, error) {
-	Users, err := ReadUserTable()
-	if err != nil {
-		return dataTypes.UserInfo{}, err
-	}
-
-	for i := 0; i < len(Users); i++ {
-		SelectedUser := Users[i]
-		if SelectedUser.AuthToken == authToken {
-			return SelectedUser, nil
-		}
-	}
-
-	return dataTypes.UserInfo{}, fmt.Errorf("Could not find user from auth: %s", authToken)
-}
-
-func GenerateNewAuthToken(username string) (string, error) {
-	var NewAuthToken string
-
-	Users, err := ReadUserTable()
-
-	if err != nil {
-		return "nil", err
-	}
-
-	// Generate new auth token
-	for i := 0; i < 32; i++ {
-		NewAuthToken += string(CHARSET[rand.Intn(len(CHARSET))])
-	}
-
-	for i := 0; i < len(Users); i++ {
-		SelectedUser := Users[i]
-		if SelectedUser.Username == username {
-			Users[i].AuthToken = NewAuthToken
-
-			UsersBytes, err := json.MarshalIndent(Users, "", "	")
-
-			if err != nil {
-				return "", err
-			}
-
-			os.WriteFile(GetFilePath(EssentialFiles["USERSFILE"]), UsersBytes, fs.ModeAppend)
-			DebugLog("Saved new auth token into the file", "GenerateNewAuthToken")
-			return NewAuthToken, nil
-		}
-	}
-	return "", nil
-}
-
-func GenerateNewUserIDFromFile() int {
-	Users, err := ReadUserTable()
-	NewID := 0
-	FoundID := true
-	if err != nil {
-		log.Fatal(err)
-		return 0
-	}
-
-	if len(Users) == 0 {
-		return NewID
-	}
-
-	DebugLog(fmt.Sprintf("Searching for new ID for new user..."), "GenerateNewUserIDFromFile", "SEARCHING")
-	for {
-		FoundID = true
-		NewID += 1
-		for i := 0; i < len(Users); i++ {
-			SelectedUser := Users[i]
-
-			if SelectedUser.UserID == NewID {
-				FoundID = false
-				break
-			}
-		}
-
-		if FoundID {
-			DebugLog(fmt.Sprintf("Found New user ID: %d", NewID), "GenerateNewUserIDFromFile", "Sucess")
-			return NewID
-		}
-	}
-}
-
-func GetFilePath(Filename string) string {
-	return DATAFILESPATH + Filename
-}
-
-func AddUserToDatabase(User dataTypes.UserInfo) error {
-	UsernameExists := false
-	Users, err := ReadUserTable()
-
-	if err != nil {
-		return err
-	}
-
-	HashedPass := HashString(User.Password)
-	User.Password = fmt.Sprintf("%x", HashedPass)
-
-	// Check that there is not an existing user with the same username
-	for i := 0; i < len(Users); i++ {
-		SelectedUser := Users[i]
-		if SelectedUser.Username == User.Username {
-			UsernameExists = true
-			break
-		}
-	}
-
-	if UsernameExists {
-		return fmt.Errorf("Username already exists")
-	}
-
-	NewUsersFile := append(Users, User)
-
-	FileContentsBytes, err := json.MarshalIndent(NewUsersFile, "", "	")
-
-	if err != nil {
-		return err
-	}
-
-	err = os.WriteFile(GetFilePath(EssentialFiles["USERSFILE"]), FileContentsBytes, fs.ModeAppend)
-
-	if err != nil {
-		return err
-	}
-
-	DebugLog("Added new user to the usersfile", "AddUserToDatabase", "SYSTEM", "true")
-	return nil
-}
-
-func ReadUserTable() ([]dataTypes.UserInfo, error) {
-	var Users []dataTypes.UserInfo
-	FilePath := GetFilePath(EssentialFiles["USERSFILE"])
-	UserBytes, err := dbms.ReadTable(FilePath)
-
-	if err != nil {
-		DebugLog("Failed to read the users table", "ReadUserTable", "error")
-		return []dataTypes.UserInfo{}, err
-	}
-
-	// Convert file contents into object
-	err = json.Unmarshal(UserBytes, &Users)
-	if err != nil {
-		DebugLog("Failed to load users table data into object notation", "ReadUserTable", "error")
-		return []dataTypes.UserInfo{}, err
-	}
-
-	DebugLog(fmt.Sprintf("Loaded: %d Users From: %s", len(Users), EssentialFiles["USERSFILE"]), "ReadUserTable")
-	return Users, nil
-}
-
-func LogErr(err error) {
-
-	if err != nil {
-		DebugLog(err.Error(), "Test", "error", "true")
-		return
-	}
-}
-
-func CreateFriendRequest(SenderUsername string, RecipientUsername string) error {
-
-	return nil
 }
 
 func CheckEssentialFiles() error {
@@ -378,21 +97,312 @@ func CheckEssentialFiles() error {
 	return nil
 }
 
-func ReadFile(FileName string) (string, error) {
-	FullFilePath := GetFilePath(FileName)
-	File, err := os.Open(FullFilePath)
-	FileSystem, err := os.Stat(FullFilePath)
-	FileSize := FileSystem.Size()
-	FileBuffer := make([]byte, FileSize)
+func CheckUserExists(Username string, Password string) (bool, error) {
+	DebugLog("Checking if user exists...", "CheckUserExists", "checking")
+	TableEntries, err := dbms.ReadTable(GetFilePath(EssentialFiles["USERSFILE"]))
+	LogErr(err)
 
-	_, err = File.Read(FileBuffer)
-	File.Close()
+	Users, err := dbms.FormatEntries[dataTypes.UserInfo](TableEntries)
+	LogErr(err)
+
+	Password = strings.Trim(Password, " ")
 
 	if err != nil {
-		return "", err
+		return false, err
 	}
 
-	return string(FileBuffer), nil
+	for i := 0; i < len(Users); i++ {
+		SelectedUser := Users[i]
+		if SelectedUser.Username == Username && SelectedUser.Password == Password {
+			DebugLog("User exists!", "CheckUserExists")
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+func CheckAuth(auth *http.Cookie, AuthCookieErr error) (bool, error) {
+	if AuthCookieErr != nil {
+		return false, fmt.Errorf("Failed to recieve the AuthToken cookie")
+	}
+
+	if len(auth.Value) == 0 {
+		return false, nil
+	}
+
+	TableEntries, err := dbms.ReadTable(GetFilePath(EssentialFiles["USERSFILE"]))
+	Users, err := dbms.FormatEntries[dataTypes.UserInfo](TableEntries)
+
+	if err != nil {
+		return false, err
+	}
+
+	if auth.Value == "NONE" {
+		return false, nil
+	}
+
+	for i := 0; i < len(Users); i++ {
+		SelectedUser := Users[i]
+		if SelectedUser.AuthToken == auth.Value {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func GetFilePath(Filename string) string {
+	return DATAFILESPATH + Filename
+}
+
+func GetIndex(x int, array []string) (string, error) {
+	if len(array) == 0 {
+		return "", nil
+	}
+
+	if len(array)-1 >= x {
+		return array[x], nil
+	}
+
+	return "", fmt.Errorf("GetIndex: Could not get index")
+}
+
+func GetChatFromID(ChatID int) (dataTypes.Chat, error) {
+	DebugLog(fmt.Sprintf("Searching for chat ID:%d", ChatID), "GetChatFromID")
+	TableEntries, err := dbms.ReadTable(GetFilePath(EssentialFiles["CHATSFILE"]))
+	Chats, err := dbms.FormatEntries[dataTypes.Chat](TableEntries)
+
+	if len(Chats) == 0 {
+		return dataTypes.Chat{}, fmt.Errorf("There are no chats to load")
+	}
+
+	for i := range TableEntries {
+		SelectedChat := Chats[i]
+		SelectedEntry := TableEntries[i]
+
+		if SelectedEntry.ID == ChatID {
+			return SelectedChat, err
+		}
+	}
+
+	return dataTypes.Chat{}, fmt.Errorf("Could not find chat from ID")
+}
+
+func GetUserFromID(ID int) (dataTypes.UserInfo, int, error) {
+	DebugLog(fmt.Sprintf("Searching for userID: %d", ID), "GetUserFromID")
+	TableEntries, err := dbms.ReadTable(GetFilePath(EssentialFiles["USERSFILE"]))
+	Users, err := dbms.FormatEntries[dataTypes.UserInfo](TableEntries)
+
+	for UserIndex := range Users {
+		SelectedUser := Users[UserIndex]
+		SelectedEntry := TableEntries[UserIndex]
+
+		if SelectedEntry.ID == ID {
+			DebugLog(fmt.Sprintf("Found userID: %d", ID), "GetUserFromID")
+			return SelectedUser, UserIndex, nil
+		}
+	}
+
+	return dataTypes.UserInfo{}, 0, err
+}
+
+func GetUserFromFileWithUsername(username string) (dataTypes.UserInfo, error) {
+	var User dataTypes.UserInfo
+	TableEntries, err := dbms.ReadTable(GetFilePath(EssentialFiles["USERSFILE"]))
+	Users, err := dbms.FormatEntries[dataTypes.UserInfo](TableEntries)
+
+	if err != nil {
+		return User, err
+	}
+
+	for i := 0; i < len(Users); i++ {
+		SelectedUser := Users[i]
+		if SelectedUser.Username == username {
+			User = Users[i]
+			return User, nil
+		}
+	}
+	return User, fmt.Errorf("Could not find user in database")
+}
+
+func GetUserFromFileWithAuth(authToken string) (dataTypes.UserInfo, error) {
+	TableEntries, err := dbms.ReadTable(GetFilePath(EssentialFiles["USERSFILE"]))
+	Users, err := dbms.FormatEntries[dataTypes.UserInfo](TableEntries)
+	if err != nil {
+		return dataTypes.UserInfo{}, err
+	}
+
+	for i := 0; i < len(Users); i++ {
+		SelectedUser := Users[i]
+		if SelectedUser.AuthToken == authToken {
+			return SelectedUser, nil
+		}
+	}
+
+	return dataTypes.UserInfo{}, fmt.Errorf("Could not find user from auth: %s", authToken)
+}
+
+func ResetAuth(AuthToken *http.Cookie) error {
+	TableEntries, err := dbms.ReadTable(GetFilePath(EssentialFiles["USERSFILE"]))
+
+	if err != nil {
+		return err
+	}
+
+	Users, err := dbms.FormatEntries[dataTypes.UserInfo](TableEntries)
+
+	if err != nil {
+		return err
+	}
+
+	for UserIndex := range Users {
+		SelectedUser := Users[UserIndex]
+		if SelectedUser.AuthToken == AuthToken.Value {
+			FoundUser := Users[UserIndex]
+			FoundUser.AuthToken = ""
+			Users[UserIndex] = FoundUser
+
+			TableEntries[UserIndex].Data = Users[UserIndex]
+			UserBytes, JsonErr := json.MarshalIndent(TableEntries, "", "	")
+
+			if JsonErr != nil {
+				return JsonErr
+			}
+
+			os.WriteFile(GetFilePath(EssentialFiles["USERSFILE"]), UserBytes, fs.ModeAppend)
+		}
+	}
+	return nil
+}
+
+func GenerateNewAuthToken(username string) (string, error) {
+	var NewAuthToken string
+
+	TableEntries, err := dbms.ReadTable(GetFilePath(EssentialFiles["USERSFILE"]))
+	Users, err := dbms.FormatEntries[dataTypes.UserInfo](TableEntries)
+
+	if err != nil {
+		return "nil", err
+	}
+
+	// Generate new auth token
+	for i := 0; i < 32; i++ {
+		NewAuthToken += string(CHARSET[rand.Intn(len(CHARSET))])
+	}
+
+	for EntryIndex := range TableEntries {
+		SelectedUser := Users[EntryIndex]
+
+		if SelectedUser.Username == username {
+			FoundUser := Users[EntryIndex]
+			FoundUser.AuthToken = NewAuthToken
+			Users[EntryIndex] = FoundUser
+
+			TableEntries[EntryIndex].Data = Users[EntryIndex]
+			UsersBytes, err := json.MarshalIndent(TableEntries, "", "	")
+
+			if err != nil {
+				return "", err
+			}
+
+			os.WriteFile(GetFilePath(EssentialFiles["USERSFILE"]), UsersBytes, fs.ModeAppend)
+			DebugLog("Saved new auth token into the file", "GenerateNewAuthToken")
+			return NewAuthToken, nil
+		}
+	}
+	return "", nil
+}
+
+func AddUserToDatabase(NewUser dataTypes.UserInfo) error {
+	HashedPass := HashString(NewUser.Password)
+	NewUser.Password = fmt.Sprintf("%x", HashedPass)
+
+	UserExists, err := CheckUserExists(NewUser.Username, NewUser.Password)
+
+	if UserExists || err != nil {
+		return err
+	}
+
+	var NewEntry dataTypes.TableEntry
+	NewEntry.ID = dbms.GenerateNewID(GetFilePath(EssentialFiles["USERSFILE"]))
+	NewEntry.Data = NewUser
+
+	err = dbms.AppendDataToTable(GetFilePath(EssentialFiles["USERSFILE"]), NewEntry)
+
+	DebugLog("Added new user to the usersfile", "AddUserToDatabase", "SYSTEM", "true")
+	return nil
+}
+
+func AddUserToChat(UserID int, ChatID int, Admin bool) error {
+	var NewTableEntry dataTypes.TableEntry
+	User, _, err := GetUserFromID(UserID)
+
+	LogErr(err)
+
+	UserData := User.UserData
+	Chat, err := GetChatFromID(ChatID)
+	LogErr(err)
+
+	if err != nil {
+		return err
+	}
+
+	NewUserDataChats := append(UserData.Chats, Chat)
+	NewUserData := UserData
+	NewUserData.Chats = NewUserDataChats
+
+	err = EditUserData(UserID, NewUserData)
+
+	NewChatData := Chat
+	if Admin {
+		NewChatAdmins := Chat.Admins
+		NewChatAdmins = append(NewChatAdmins, UserID)
+		NewChatData.Admins = NewChatAdmins
+	} else {
+		NewChatRecipients := Chat.Recipients
+		NewChatRecipients = append(NewChatRecipients, UserID)
+		NewChatData.Recipients = NewChatRecipients
+	}
+
+	NewTableEntry.ID = dbms.GenerateNewID(GetFilePath(EssentialFiles["CHATSSFILE"]))
+	err = dbms.AppendDataToTable(GetFilePath(EssentialFiles["CHATSFILE"]), NewTableEntry)
+
+	return err
+}
+
+func EditUserData(UserID int, NewUserData dataTypes.UserData) error {
+	TableEntries, err := dbms.ReadTable(GetFilePath(EssentialFiles["USERSFILE"]))
+	LogErr(err)
+
+	Users, err := dbms.FormatEntries[dataTypes.UserInfo](TableEntries)
+	LogErr(err)
+
+	_, UserIndex, err := GetUserFromID(UserID)
+	LogErr(err)
+
+	if len(Users) == 0 {
+		return fmt.Errorf("There were no users to edit in the database")
+	}
+	User := Users[UserIndex]
+
+	User.UserData = NewUserData
+	UsersBytes, err := json.Marshal(Users)
+
+	os.WriteFile(GetFilePath(EssentialFiles["USERSFILE"]), UsersBytes, os.ModeAppend)
+	return err
+}
+
+func LogErr(err error) {
+
+	if err != nil {
+		DebugLog(err.Error(), "Test", "error", "true")
+		return
+	}
+}
+
+func CreateFriendRequest(SenderUsername string, RecipientUsername string) error {
+
+	return nil
 }
 
 // ------------------------------------------------------------------------------------------- //
@@ -400,20 +410,19 @@ func ReadFile(FileName string) (string, error) {
 func main() {
 	err := CheckEssentialFiles()
 	if err != nil {
-		DebugLog("Failed to laod database!		Shutting down.", "CheckEssentialFiles", "error")
-		fmt.Printf("Failed to load database ;/\n%e\n\nShutting down.", err)
+		DebugLog("Failed to load database!		Shutting down.", "CheckEssentialFiles", "error")
 		return
 	}
 
 	Test()
 
-	DebugFileContents, err := ReadFile(EssentialFiles["DEBUGFILE"])
+	DebugFileContents, err := dbms.ReadFile(GetFilePath(EssentialFiles["DEBUGFILE"]))
 
 	if err != nil {
 		fmt.Print(err)
 	}
 
-	if DebugFileContents == "true" {
+	if string(DebugFileContents) == "true" {
 		DebugMode = true
 	} else {
 		DebugMode = false
@@ -435,8 +444,25 @@ func main() {
 
 func Test() {
 	fmt.Println("Test")
+	var User dataTypes.UserInfo
+	User.Username = "BENthedude425"
+	User.Password = "rawr"
 
-	dbms.AppendDataToTable[dataTypes.UserInfo](GetFilePath(EssentialFiles["USERSFILE"]))
+	err := AddUserToDatabase(User)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	//newID := dbms.GenerateNewID(GetFilePath(EssentialFiles["USERSFILE"]))
+	//var Chat dataTypes.Chat
+	//Chat.ChatID = 0
+
+	//err = AddUserToChat(0, 0, true)
+
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
 }
 
 func HandleApiRequest(Writer http.ResponseWriter, Request *http.Request) {
@@ -456,8 +482,8 @@ func HandleApiRequest(Writer http.ResponseWriter, Request *http.Request) {
 
 			// Check Username and password against database
 			if LoginSucess {
+				DebugLog("User successfully logged in!", "HandleApiRequest")
 				// generate a new auth token for the user and then send it back to be stored in cookies
-
 				NewAuthToken, err := GenerateNewAuthToken(Username)
 				LogErr(err)
 
@@ -486,23 +512,7 @@ func HandleApiRequest(Writer http.ResponseWriter, Request *http.Request) {
 				return
 			}
 
-			Users, err := ReadUserTable()
-
-			if err != nil {
-				return
-			}
-
-			for UserIndex := range Users {
-				if Users[UserIndex].AuthToken == AuthToken.Value {
-					Users[UserIndex].AuthToken = ""
-					UserBytes, JsonErr := json.MarshalIndent(Users, "", "	")
-					if JsonErr != nil {
-						return
-					}
-					os.WriteFile(GetFilePath(EssentialFiles["USERSFILE"]), UserBytes, fs.ModeAppend)
-				}
-
-			}
+			ResetAuth(AuthToken)
 
 		case "FriendRequest":
 			RecipientUsername := Request.PostFormValue("RecipientUsername")

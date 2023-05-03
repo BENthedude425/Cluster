@@ -1,11 +1,11 @@
 package dbms
 
 import (
-	"Go-Chat-App/src/packages/dataTypes"
 	"encoding/json"
 	"fmt"
 	"log"
 	"os"
+	"packages/dataTypes"
 )
 
 func ReadFile(FileName string) ([]byte, error) {
@@ -29,33 +29,104 @@ func ReadFile(FileName string) ([]byte, error) {
 	return ContentsBuffer, err
 }
 
-func ReadTable(TableName string) ([]byte, error) {
+func ReadTable(TableName string) ([]dataTypes.TableEntry, error) {
+	var TableEntries []dataTypes.TableEntry
 	FileContents, err := ReadFile(TableName)
 
-	// Check if the file contents can be initialised as an object
-	if err != nil || !json.Valid(FileContents) {
-		return []byte{}, err
+	if len(FileContents) == 0 {
+		return []dataTypes.TableEntry{}, nil
 	}
 
-	return FileContents, nil
+	if err != nil || !json.Valid(FileContents) {
+		return []dataTypes.TableEntry{}, err
+	}
+
+	err = json.Unmarshal(FileContents, &TableEntries)
+
+	return TableEntries, err
 }
 
-func AppendDataToTable[T dataTypes.DBDataType](TableName string) error {
-	TableContents, err := ReadFile(TableName)
-
-	var result T
-	err = json.Unmarshal(TableContents, &result)
-	fmt.Print(result)
+func GenerateNewID(TableName string) int {
+	Entries, err := ReadTable(TableName)
+	NewID := 0
+	FoundID := true
 
 	if err != nil {
 		log.Fatal(err)
+		return 0
 	}
+
+	if len(Entries) == 0 {
+		return NewID
+	}
+
+	for {
+		FoundID = true
+		NewID += 1
+		for i := range Entries {
+			SelectedEntry := Entries[i]
+
+			if SelectedEntry.ID == NewID {
+				FoundID = false
+				break
+			}
+		}
+
+		if FoundID {
+			return NewID
+		}
+	}
+}
+
+func AppendDataToTable(TableName string, Data dataTypes.TableEntry) error {
+	var TableEntries []dataTypes.TableEntry
+	var TableContentsBytes []byte
+	TableContents, err := ReadFile(TableName)
+
+	if err != nil {
+		return err
+	}
+
+	if len(TableContents) > 0 {
+		err = json.Unmarshal(TableContents, &TableEntries)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	TableEntries = append(TableEntries, Data)
+	TableContentsBytes, err = json.MarshalIndent(TableEntries, "", "	")
+
+	if err != nil {
+		return err
+	}
+
+	err = os.WriteFile(TableName, TableContentsBytes, os.ModeAppend)
 	return err
 }
 
-func WriteTable(TableName string, Data any, DataType string) {
-	switch DataType {
-	case "UserInfo":
+func FormatEntries[T dataTypes.DBDataType](TableEntries []dataTypes.TableEntry) (map[int]T, error) {
+	var DataStuct T
+	FormattedEntriesMap := make(map[int]T)
+	for i := range TableEntries {
+		SelectedEntry := TableEntries[i]
 
+		ID := SelectedEntry.ID
+		Data, err := json.Marshal(SelectedEntry.Data)
+
+		if err != nil {
+			return map[int]T{}, err
+		}
+
+		err = json.Unmarshal(Data, &DataStuct)
+
+		if err != nil || !json.Valid(Data) {
+			return map[int]T{}, fmt.Errorf("")
+		}
+
+		FormattedEntriesMap[ID] = DataStuct
 	}
+
+	return FormattedEntriesMap, nil
 }
