@@ -11,6 +11,7 @@ import (
 	"os"
 	"packages/dataTypes"
 	"packages/dbms"
+	"strconv"
 	"strings"
 )
 
@@ -24,6 +25,18 @@ var EssentialFiles = map[string]string{
 	"USERSFILE": "UsersData.Json", // Stores User Data
 	"CHATSFILE": "Chats.Json",     // Stores all chats
 	"DEBUGFILE": "Debug.txt",      // Checks to see debug setting
+}
+
+func ReturnSuccessValue(Success bool, Reason string) []byte {
+	// Create the success message
+	var ResponseData = [][]string{
+		{"success", strconv.FormatBool(Success), Reason},
+	}
+
+	ResponseDataBytes, err := json.Marshal(ResponseData)
+	LogErr(err)
+
+	return ResponseDataBytes
 }
 
 func DebugLog(message string, label string, EXTRAPARAMS ...string) {
@@ -401,8 +414,54 @@ func LogErr(err error) {
 }
 
 func CreateFriendRequest(SenderUsername string, RecipientUsername string) error {
+	var NewFriendRequest dataTypes.FriendRequest
 
-	return nil
+	TableEntries, err := dbms.ReadTable(GetFilePath(EssentialFiles["USERSFILE"]))
+	if err != nil {
+		return err
+	}
+
+	Users, err := dbms.FormatEntries[dataTypes.UserInfo](TableEntries)
+
+	if err != nil {
+		return err
+	}
+
+	for EntryIndex := range TableEntries {
+		SelectedUser := Users[EntryIndex]
+
+		// Set the sender and reciever of the friend request
+		if SelectedUser.Username == SenderUsername {
+			NewFriendRequest.InitiatorID = TableEntries[EntryIndex].ID
+		} else if SelectedUser.Username == RecipientUsername {
+			NewFriendRequest.RecieverID = TableEntries[EntryIndex].ID
+		}
+
+	}
+
+	// Attach friend request to each of the users in database
+	for EntryIndex := range TableEntries {
+		SelectedEntry := TableEntries[EntryIndex]
+		SelectedUser := Users[EntryIndex]
+
+		// If the selected user is part of the friend request attach the request to their profile
+		if SelectedEntry.ID == NewFriendRequest.InitiatorID || SelectedEntry.ID == NewFriendRequest.RecieverID {
+			for FriendRequestIndex := range SelectedUser.UserData.FriendRequestsIDs {
+				SelectedFriendRequest := SelectedUser.UserData.FriendRequestsIDs[FriendRequestIndex]
+				if SelectedFriendRequest == NewFriendRequest {
+					return fmt.Errorf("Friend request already exists")
+				}
+			}
+
+			SelectedUser.UserData.FriendRequestsIDs = append(SelectedUser.UserData.FriendRequestsIDs, NewFriendRequest)
+			TableEntries[EntryIndex].Data = SelectedUser
+		}
+	}
+
+	TableEntriesBytes, err := json.MarshalIndent(TableEntries, "", "	")
+	os.WriteFile(GetFilePath(EssentialFiles["USERSFILE"]), TableEntriesBytes, fs.ModeAppend)
+
+	return err
 }
 
 // ------------------------------------------------------------------------------------------- //
@@ -454,6 +513,16 @@ func Test() {
 		log.Fatal(err)
 	}
 
+	var User2 dataTypes.UserInfo
+	User2.Username = "JU-freeze"
+	User2.Password = "ju"
+
+	err = AddUserToDatabase(User2)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	//newID := dbms.GenerateNewID(GetFilePath(EssentialFiles["USERSFILE"]))
 	//var Chat dataTypes.Chat
 	//Chat.ChatID = 0
@@ -474,21 +543,21 @@ func HandleApiRequest(Writer http.ResponseWriter, Request *http.Request) {
 			Password := Request.PostFormValue("password")
 			HashedPassword := fmt.Sprintf("%x", sha256.Sum256([]byte(Password)))
 
-			LoginSucess, err := CheckUserExists(Username, HashedPassword)
+			LoginSuccess, err := CheckUserExists(Username, HashedPassword)
 
 			if err != nil {
 				return
 			}
 
 			// Check Username and password against database
-			if LoginSucess {
+			if LoginSuccess {
 				DebugLog("User successfully logged in!", "HandleApiRequest")
 				// generate a new auth token for the user and then send it back to be stored in cookies
 				NewAuthToken, err := GenerateNewAuthToken(Username)
 				LogErr(err)
 
 				var ResponseData = [][]string{
-					{"sucess", "true"},
+					{"Success", "true"},
 					{"AuthToken", NewAuthToken},
 					{"Redirect", "/mainpage.html"},
 				}
@@ -497,12 +566,8 @@ func HandleApiRequest(Writer http.ResponseWriter, Request *http.Request) {
 				json.NewEncoder(Writer).Encode(ResponseData)
 			} else {
 
-				var ResponseData = [][]string{
-					{"sucess", "false"},
-				}
-
 				Writer.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(Writer).Encode(ResponseData)
+				Writer.Write(ReturnSuccessValue(true, "OK"))
 				return
 			}
 		case "logout":
@@ -514,12 +579,18 @@ func HandleApiRequest(Writer http.ResponseWriter, Request *http.Request) {
 
 			ResetAuth(AuthToken)
 
+			ResponseDataBytes, err := json.Marshal(ReturnSuccessValue(true, "OK"))
+
+			LogErr(err)
+
+			Writer.Write(ResponseDataBytes)
+
 		case "FriendRequest":
 			RecipientUsername := Request.PostFormValue("RecipientUsername")
 			AuthToken, AuthCookieErr := Request.Cookie("AuthToken")
 
 			AuthPassed, err := CheckAuth(AuthToken, AuthCookieErr)
-			fmt.Print(err)
+			LogErr(err)
 
 			if AuthPassed {
 				User, err := GetUserFromFileWithAuth(AuthToken.Value)
@@ -528,7 +599,14 @@ func HandleApiRequest(Writer http.ResponseWriter, Request *http.Request) {
 					return
 				}
 
-				CreateFriendRequest(User.Username, RecipientUsername)
+				FriendReqErr := CreateFriendRequest(User.Username, RecipientUsername)
+				LogErr(FriendReqErr)
+
+				if FriendReqErr == nil {
+					Writer.Write(ReturnSuccessValue(true, "OK"))
+				} else {
+					Writer.Write(ReturnSuccessValue(false, FriendReqErr.Error()))
+				}
 
 			}
 

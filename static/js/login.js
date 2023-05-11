@@ -17,47 +17,43 @@ function Login(){
 
     var FormData = "username=" + UsernameValue + "&password=" + PasswordValue;
 
-    var xhr = new XMLHttpRequest();
-    xhr.open("POST", "/api/login");
-    xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+    API("post", "/login", LoginCB, true, FormData)
+}
 
-    xhr.send(FormData);
+function LoginCB(XHRrequest){
+    var UsernameEntry = document.getElementById("FormUsername");
+    var PasswordEntry = document.getElementById("FormPassword");
 
-    xhr.onreadystatechange = function() {
-        if (xhr.readyState == 4) {
-            var ResponseDataRaw = xhr.responseText;
-            console.log(ResponseDataRaw);
+    var ResponseDataRaw = XHRrequest.responseText;
+    var ResponseDataSerialised = JSON.parse(ResponseDataRaw);
+    var Success = ResponseDataSerialised[0][1];
 
-            UsernameEntry.value = "";
-            PasswordEntry.value = "";
+    UsernameEntry.value = "";
+    PasswordEntry.value = "";
 
-            var ResponseDataSerialised = JSON.parse(ResponseDataRaw);
+    if(Success == "true"){
+        var NewAuthToken = ResponseDataSerialised[1][1];
+        var RedirectURL = ResponseDataSerialised[2][1];
 
-            var Sucess = ResponseDataSerialised[0][1];
-
-            if(Sucess == "true"){
-                var NewAuthToken = ResponseDataSerialised[1][1];
-                var RedirectURL = ResponseDataSerialised[2][1];
-
-                document.cookie = "AuthToken=" + NewAuthToken;
-                window.location.href = RedirectURL;
-            }else{
-                alert("Authentification failed ;/\nPlease try again and make sure credentials are correct!");
-            }
-        }
+        document.cookie = "AuthToken=" + NewAuthToken;
+        window.location.href = RedirectURL;
+    }else{
+        alert("Authentification failed ;/\nPlease try again and make sure credentials are correct!");
     }
 }
 
 function LogOut(){
-    xhr = new XMLHttpRequest();
-    xhr.open("post", "/api/logout");
-    xhr.send();
+    API('post' ,'/logout', LogOutCB)
+}
 
-    xhr.onreadystatechange = function() {
-        if (xhr.readyState == 4 || xhr.code == 404){
-            document.cookie = "AuthToken="
-            window.location.href = "index.html"
-        }
+function LogOutCB(XHRrequest){
+    var ResponseDataRaw = XHRrequest.responseText;
+    var ResponseDataSerialised = JSON.parse(ResponseDataRaw);
+    var Success = ResponseDataSerialised[0][1];
+
+    if (Success){
+        document.cookie = "AuthToken=";
+        window.location.href = "index.html";
     }
 }
 

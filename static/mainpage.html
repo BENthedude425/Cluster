@@ -7,6 +7,7 @@
         
         <script src="js/sideNav.js"></script>
         <script src="js/login.js"></script>
+        <script src="js/api.js"></script>
     </head>
     <body style="padding: 0%; margin: 0%;" onload="CloseNav();">
 
@@ -19,10 +20,10 @@
 
                 <div id="NavCategories">
                     <div id="FriendsList">
-                        <b>
+                        <b id="FriendsListTag" onclick="ToggleCategory(this)">
                             Friends >
                         </b>
-                        <div id="example friend" onclick="SelectChat(this)" style="width:100%; margin-top: 10%;">
+                        <div id="example friend" onclick="SelectChat(this)" style="width:100%; margin-top: 10%;visibility: hidden;">
                             <div>
                                 <img src="profilepics/profilepic.png">
                                 Diede3x0
@@ -31,12 +32,12 @@
                     </div>
 
                     <div id="GroupChats">
-                        <b>
+                        <b id="GroupChatsTag" onclick="ToggleCategory(this)">
                             Group Chats >
                         </b>
-                        <div id="example friend" onclick="SelectChat(this)" style="width:100%; margin-top: 10%;">
+                        <div id="example group chat" onclick="SelectChat(this)" style="width:100%; margin-top: 10%;visibility: hidden;">
                             <div>
-                                <img src="groupchatpics/test.png">
+                                <img src="groupchatpics/test.png" alt="Avatar">
                                 SpecialGuys
                             </div>
                         </div> 
@@ -56,6 +57,10 @@
             <button onclick="LogOut()">
                 Log out
             </button>
+            <button onclick="SendFriendRequest('JU-freeze')">
+                Friend Request: usrnm(JU-freeze)
+            </button>
+
         </div>
     </body>
 </html>
