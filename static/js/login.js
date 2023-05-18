@@ -5,7 +5,6 @@ window.onload = function(){
             Login();
         }
     });
-
 }
 
 function Login(){
@@ -47,14 +46,8 @@ function LogOut(){
 }
 
 function LogOutCB(XHRrequest){
-    var ResponseDataRaw = XHRrequest.responseText;
-    var ResponseDataSerialised = JSON.parse(ResponseDataRaw);
-    var Success = ResponseDataSerialised[0][1];
-
-    if (Success){
-        document.cookie = "AuthToken=";
-        window.location.href = "index.html";
-    }
+    document.cookie = "AuthToken=";
+    window.location.href = "index.html";
 }
 
 function GetCookie(CookieName){

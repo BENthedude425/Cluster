@@ -42,7 +42,12 @@ body{
     box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
 }
 
-input{
+.main_container input{
+    height: 8.56%;
+    width: 70%;
+}
+
+.input-type1{
     background-color: rgb(46, 50, 53);
     box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19) inset; 
     border: solid black 2px;
@@ -61,8 +66,7 @@ input{
     justify-content: center;
     justify-self: center;
 
-    height: 8.56%;
-    width: 70%;
+
     transition: 0.5s;
 }
 
@@ -81,4 +85,8 @@ td{
 
 button{
     background-image: linear-gradient(to bottom right, rgb(240, 100, 18),rgb(244, 59, 142) );
+}
+
+.bottom{
+    bottom:0;
 }

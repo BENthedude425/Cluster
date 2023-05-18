@@ -12,40 +12,63 @@
     <body style="padding: 0%; margin: 0%;" onload="CloseNav();">
 
         <div id="SideNav" class="SideNav" style="width:15%;">
-            <div id="SideNavContent" style="overflow-x: hidden; height: 100%;">
+            <div id="SideNavContent" style="height: 100%;">
                 <div style="padding: 5%">
-                    <b style="font-size: xx-large;">Da menu</b>
+                    <b style="font-size: xx-large; text-align: center;">Da menu</b>
                     <i class="gg-menu-boxed" onclick="ToggleNav()" style="margin: 0; align-self: baseline; float: right; transform: scale(2);"></i>
                 </div>            
 
-                <div id="NavCategories">
+                <div class="SideNavContents" id="NavCategories">
+
                     <div id="FriendsList">
-                        <b id="FriendsListTag" onclick="ToggleCategory(this)">
-                            Friends >
-                        </b>
-                        <div id="example friend" onclick="SelectChat(this)" style="width:100%; margin-top: 10%;visibility: hidden;">
+                        <div class="SideNavCategoryText" id="FriendsListTag" onclick="ToggleCategory(this)">
+                            <b>
+                                < Friends >
+                            </b>                            
+                        </div>
+
+
+                        <div id="example friend" onclick="SelectChat(this)" style="width:100%; margin-top: 10%;display: none;">
                             <div>
                                 <img src="profilepics/profilepic.png">
                                 Diede3x0
                             </div>
-                        </div>                   
+                        </div>          
+                    
                     </div>
 
                     <div id="GroupChats">
-                        <b id="GroupChatsTag" onclick="ToggleCategory(this)">
-                            Group Chats >
-                        </b>
-                        <div id="example group chat" onclick="SelectChat(this)" style="width:100%; margin-top: 10%;visibility: hidden;">
+                        <div class="SideNavCategoryText" id="GroupChatsTag" onclick="ToggleCategory(this)">
+                            <b>
+                                < Group Chats >
+                            </b>
+                        </div>
+
+                        <div id="example group chat" onclick="SelectChat(this)" style="width:100%; margin-top: 10%;display: none;">
                             <div>
                                 <img src="groupchatpics/test.png" alt="Avatar">
                                 SpecialGuys
                             </div>
                         </div> 
-                    </div>                    
+                    </div>
+                    
+                    <div style="position:absolute;bottom:0; background-color: rgb(68,73,78);width: 100%;">
+
+                        <div style="height: 10%;" class="bottom">
+                            <label>Add Friend</label>
+                            <input id="FriendSearchBar" type="text">
+                            <button class="input-type1">Send</button>
+                        </div>
+
+                        <div style="margin-top:20%;">
+                            Incoming
+                        </div>
+                        <div>
+                            Outgoing
+                        </div> 
+                    </div>
+             
                 </div>
-
-
-
             </div>
         </div>
 
@@ -53,14 +76,8 @@
 
         <div class="main_container" style="width: 80%">
             <i class="gg-menu-boxed" onclick="ToggleNav()" style="margin: 0; align-self: baseline;"></i>
-            
-            <button onclick="LogOut()">
-                Log out
-            </button>
-            <button onclick="SendFriendRequest('JU-freeze')">
-                Friend Request: usrnm(JU-freeze)
-            </button>
 
+            <img src="logout.png" onclick="LogOut()" style="right:0;top:0;position:absolute;width: 32px;height: 32px;margin: 5px;" >
         </div>
     </body>
 </html>

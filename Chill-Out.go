@@ -20,6 +20,7 @@ const WEBSERVERPORT = "8080"
 const CHARSET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
 
 var DebugMode = true
+var PrintServerInfo = false
 
 var EssentialFiles = map[string]string{
 	"USERSFILE": "UsersData.Json", // Stores User Data
@@ -467,6 +468,7 @@ func CreateFriendRequest(SenderUsername string, RecipientUsername string) error 
 // ------------------------------------------------------------------------------------------- //
 
 func main() {
+
 	err := CheckEssentialFiles()
 	if err != nil {
 		DebugLog("Failed to load database!		Shutting down.", "CheckEssentialFiles", "error")
@@ -537,6 +539,7 @@ func Test() {
 func HandleApiRequest(Writer http.ResponseWriter, Request *http.Request) {
 	if Request.Method == "POST" {
 		ApiFunc := strings.Split(Request.RequestURI, "/api/")[1]
+		DebugLog(fmt.Sprintf("Incoming post request via the API  %s", Request.RequestURI), "HandleApiRequest")
 		switch ApiFunc {
 		case "login":
 			Username := Request.PostFormValue("username")
@@ -567,12 +570,13 @@ func HandleApiRequest(Writer http.ResponseWriter, Request *http.Request) {
 			} else {
 
 				Writer.Header().Set("Content-Type", "application/json")
-				Writer.Write(ReturnSuccessValue(true, "OK"))
+				Writer.Write(ReturnSuccessValue(false, "FAILED"))
 				return
 			}
 		case "logout":
 			AuthToken, AuthCookieErr := Request.Cookie("AuthToken")
 
+			LogErr(AuthCookieErr)
 			if AuthCookieErr != nil {
 				return
 			}
@@ -584,7 +588,7 @@ func HandleApiRequest(Writer http.ResponseWriter, Request *http.Request) {
 			LogErr(err)
 
 			Writer.Write(ResponseDataBytes)
-
+			return
 		case "FriendRequest":
 			RecipientUsername := Request.PostFormValue("RecipientUsername")
 			AuthToken, AuthCookieErr := Request.Cookie("AuthToken")
@@ -620,7 +624,10 @@ func HandleApiRequest(Writer http.ResponseWriter, Request *http.Request) {
 }
 
 func Servepage(Writer http.ResponseWriter, Request *http.Request) {
-	fmt.Printf("[%s] Request Recieved from %s for %s \n", Request.Method, Request.RemoteAddr, Request.RequestURI)
+	if PrintServerInfo {
+		DebugLog(fmt.Sprintf("[%s] Request Recieved from %s for %s", Request.Method, Request.RemoteAddr, Request.RequestURI), "Servepage")
+	}
+
 	AuthToken, AuthCookieErr := Request.Cookie("AuthToken")
 
 	AuthPassed, err := CheckAuth(AuthToken, AuthCookieErr)

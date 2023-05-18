@@ -18,20 +18,20 @@ function ToggleNav(){
 }
 
 function ToggleCategory(CallerDiv){
-    var VisibilityOption = "hidden";
     var DivParent = document.getElementById(CallerDiv.id).parentElement;
     var DivChildren = DivParent.children;
     for(let i = 0; i < DivChildren.length; i++){
         var SelectedChild = DivChildren[i];
 
-        // Set the visibility option
-        if(DivChildren[1].style.visibility == "hidden"){
-            VisibilityOption = "visible";
+        if (SelectedChild.style.display == "none"){
+            DisplayOption = "block"
+        }else{
+            DisplayOption = "none"
         }
 
         // Only execute for divs without the tag ID
         if (SelectedChild.id != CallerDiv.id){
-            SelectedChild.style.visibility = VisibilityOption;
+            SelectedChild.style.display = DisplayOption;
         }
     }
 }

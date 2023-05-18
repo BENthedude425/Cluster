@@ -11,8 +11,36 @@
     transition: 0.6s;
 }
 
-img{
+.SideNavCategoryText{
+    text-align: center;
+    transition: 0.5s;
+}
+
+.SideNavCategoryText:hover{
+    transform: scale(140%);
+}
+
+.SideNav b{
+    background: linear-gradient(to bottom right, rgb(240, 100, 18),rgb(244, 59, 142) );
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.SideNavContents img{
     border-radius: 50%;
     width: 64px;
     height: 64px;
+}
+
+.SideNavContents div{
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: -moz-none;
+    -ms-user-select: none;
+    -o-user-select: none;
+    user-select: none;
+
+    margin-top: 10%;
+    margin-bottom: 0%;
 }
