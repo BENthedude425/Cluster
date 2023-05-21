@@ -9,7 +9,7 @@
         <script src="js/login.js"></script>
         <script src="js/api.js"></script>
     </head>
-    <body style="padding: 0%; margin: 0%;" onload="CloseNav();">
+    <body style="padding: 0%; margin: 0%;overflow-y: hidden;" onload="CloseNav();">
 
         <div id="SideNav" class="SideNav" style="width:15%;">
             <div id="SideNavContent" style="height: 100%;">
@@ -74,10 +74,12 @@
 
         
 
-        <div class="main_container" style="width: 80%">
-            <i class="gg-menu-boxed" onclick="ToggleNav()" style="margin: 0; align-self: baseline;"></i>
+        <div class="main_container" style="width: 80%;height: 100%;">
+            <div id="Content" class="Center" style="width: 100%;height: 60%;position:relative;">
+                <i class="gg-menu-boxed" onclick="ToggleNav()" style="margin: 0; align-self: baseline;"></i>
 
-            <img src="logout.png" onclick="LogOut()" style="right:0;top:0;position:absolute;width: 32px;height: 32px;margin: 5px;" >
+                <img src="logout.png" onclick="LogOut()" style="right:0;top:0;position:absolute;width: 32px;height: 32px;margin: 5px;" >
+            </div>
         </div>
     </body>
 </html>
