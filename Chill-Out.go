@@ -504,7 +504,7 @@ func main() {
 }
 
 func Test() {
-	fmt.Println("Test")
+	DebugLog("Test function initiated", "Test", "test")
 	var User dataTypes.UserInfo
 	User.Username = "BENthedude425"
 	User.Password = "rawr"
