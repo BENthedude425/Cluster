@@ -15,7 +15,7 @@ import (
 	"strings"
 )
 
-const DATAFILESPATH = "data/"
+const DATAFILESPATH = "DB/"
 const WEBSERVERPORT = "8080"
 const CHARSET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
 
@@ -40,26 +40,31 @@ func ReturnSuccessValue(Success bool, Reason string) []byte {
 	return ResponseDataBytes
 }
 
+func IfEmptyString(StringPointer *string, Text string) string {
+	if *StringPointer == "" {
+		*StringPointer = Text
+	}
+
+	return ""
+}
+
+// args: message, label, logtype, alwayslog, newline
 func DebugLog(message string, label string, EXTRAPARAMS ...string) {
 	logtype, _ := GetIndex(0, EXTRAPARAMS)
+	alwayslog, _ := GetIndex(1, EXTRAPARAMS)
+	newline, _ := GetIndex(2, EXTRAPARAMS)
+
+	IfEmptyString(&logtype, "INFO")
+	IfEmptyString(&alwayslog, "false")
+	IfEmptyString(&newline, "true")
 
 	// WhiteSpace const to make the log less crammed and easier to read
 	whitespacenum := 25
 
-	alwayslog, _ := GetIndex(1, EXTRAPARAMS)
-
-	if logtype == "" {
-		logtype = "INFO"
-	}
-
-	if alwayslog == "" {
-		alwayslog = "false"
-	}
-
-	// Calcuate needed whitespace
-
+	// Calcuate needed whitespaces
 	neededwhitespace := whitespacenum - len(label)
 	whitespace := " "
+
 	// Add whitespace
 	if neededwhitespace > 0 {
 		for i := 0; i < neededwhitespace; i++ {
@@ -67,8 +72,14 @@ func DebugLog(message string, label string, EXTRAPARAMS ...string) {
 		}
 	}
 
+	LogMessage := fmt.Sprintf("[%s]%s[%s]			%s", label, whitespace, strings.ToUpper(logtype), message)
+
+	if newline == "true" {
+		LogMessage += "\n"
+	}
+
 	if DebugMode || alwayslog == "true" {
-		fmt.Printf("[%s]%s[%s]			%s\n", label, whitespace, strings.ToUpper(logtype), message)
+		fmt.Print(LogMessage)
 	}
 }
 
@@ -94,17 +105,20 @@ func CheckEssentialFiles() error {
 	for key, value := range EssentialFiles {
 		FileName := value
 		FullFilePath := GetFilePath(FileName)
-		DebugLog(fmt.Sprintf("Checking for %s under %s ...", key, FullFilePath), "CheckEssentialFiles", "checking")
+		DebugLog(fmt.Sprintf("Checking for %s under %s ...", key, FullFilePath), "CheckEssentialFiles", "checking", "false", "false")
 		_, err = os.Stat(FullFilePath)
 		if os.IsNotExist(err) {
-			DebugLog(fmt.Sprintf("Creating %s ...", FullFilePath), "CheckEssentialFiles", "checking")
+			fmt.Printf("[FAILED]\n")
+			DebugLog(fmt.Sprintf("Creating %s ...", FullFilePath), "CheckEssentialFiles", "system", "false", "false")
 
 			_, err = os.Create(FullFilePath)
 			if err != nil {
-				DebugLog("FAILED", "CheckEssentialFiles")
+				fmt.Printf("[FAILED]\n")
 				return err
 			}
-			DebugLog("[OK]", "CheckEssentialFiles")
+			fmt.Printf("[OK]\n")
+		} else {
+			fmt.Printf("[OK]\n")
 		}
 	}
 
@@ -137,7 +151,7 @@ func CheckUserExists(Username string, Password string) (bool, error) {
 
 func CheckAuth(auth *http.Cookie, AuthCookieErr error) (bool, error) {
 	if AuthCookieErr != nil {
-		return false, fmt.Errorf("Failed to recieve the AuthToken cookie")
+		return false, fmt.Errorf("failed to recieve the AuthToken cookie")
 	}
 
 	if len(auth.Value) == 0 {
@@ -145,6 +159,11 @@ func CheckAuth(auth *http.Cookie, AuthCookieErr error) (bool, error) {
 	}
 
 	TableEntries, err := dbms.ReadTable(GetFilePath(EssentialFiles["USERSFILE"]))
+
+	if err != nil {
+		return false, err
+	}
+
 	Users, err := dbms.FormatEntries[dataTypes.UserInfo](TableEntries)
 
 	if err != nil {
@@ -183,10 +202,15 @@ func GetIndex(x int, array []string) (string, error) {
 func GetChatFromID(ChatID int) (dataTypes.Chat, error) {
 	DebugLog(fmt.Sprintf("Searching for chat ID:%d", ChatID), "GetChatFromID")
 	TableEntries, err := dbms.ReadTable(GetFilePath(EssentialFiles["CHATSFILE"]))
+
+	if err != nil {
+		return dataTypes.Chat{}, err
+	}
+
 	Chats, err := dbms.FormatEntries[dataTypes.Chat](TableEntries)
 
 	if len(Chats) == 0 {
-		return dataTypes.Chat{}, fmt.Errorf("There are no chats to load")
+		return dataTypes.Chat{}, fmt.Errorf("there are no chats to load")
 	}
 
 	for i := range TableEntries {
@@ -198,12 +222,17 @@ func GetChatFromID(ChatID int) (dataTypes.Chat, error) {
 		}
 	}
 
-	return dataTypes.Chat{}, fmt.Errorf("Could not find chat from ID")
+	return dataTypes.Chat{}, fmt.Errorf("could not find chat from ID")
 }
 
 func GetUserFromID(ID int) (dataTypes.UserInfo, int, error) {
 	DebugLog(fmt.Sprintf("Searching for userID: %d", ID), "GetUserFromID")
 	TableEntries, err := dbms.ReadTable(GetFilePath(EssentialFiles["USERSFILE"]))
+
+	if err != nil {
+		return dataTypes.UserInfo{}, 0, err
+	}
+
 	Users, err := dbms.FormatEntries[dataTypes.UserInfo](TableEntries)
 
 	for UserIndex := range Users {
@@ -222,6 +251,11 @@ func GetUserFromID(ID int) (dataTypes.UserInfo, int, error) {
 func GetUserFromFileWithUsername(username string) (dataTypes.UserInfo, error) {
 	var User dataTypes.UserInfo
 	TableEntries, err := dbms.ReadTable(GetFilePath(EssentialFiles["USERSFILE"]))
+
+	if err != nil {
+		return dataTypes.UserInfo{}, err
+	}
+
 	Users, err := dbms.FormatEntries[dataTypes.UserInfo](TableEntries)
 
 	if err != nil {
@@ -235,12 +269,18 @@ func GetUserFromFileWithUsername(username string) (dataTypes.UserInfo, error) {
 			return User, nil
 		}
 	}
-	return User, fmt.Errorf("Could not find user in database")
+	return User, fmt.Errorf("could not find user in database")
 }
 
 func GetUserFromFileWithAuth(authToken string) (dataTypes.UserInfo, error) {
 	TableEntries, err := dbms.ReadTable(GetFilePath(EssentialFiles["USERSFILE"]))
+
+	if err != nil {
+		return dataTypes.UserInfo{}, err
+	}
+
 	Users, err := dbms.FormatEntries[dataTypes.UserInfo](TableEntries)
+
 	if err != nil {
 		return dataTypes.UserInfo{}, err
 	}
@@ -252,7 +292,7 @@ func GetUserFromFileWithAuth(authToken string) (dataTypes.UserInfo, error) {
 		}
 	}
 
-	return dataTypes.UserInfo{}, fmt.Errorf("Could not find user from auth: %s", authToken)
+	return dataTypes.UserInfo{}, fmt.Errorf("could not find user from auth: %s", authToken)
 }
 
 func ResetAuth(AuthToken *http.Cookie) error {
@@ -292,6 +332,11 @@ func GenerateNewAuthToken(username string) (string, error) {
 	var NewAuthToken string
 
 	TableEntries, err := dbms.ReadTable(GetFilePath(EssentialFiles["USERSFILE"]))
+
+	if err != nil {
+		return "", err
+	}
+
 	Users, err := dbms.FormatEntries[dataTypes.UserInfo](TableEntries)
 
 	if err != nil {
@@ -340,6 +385,10 @@ func AddUserToDatabase(NewUser dataTypes.UserInfo) error {
 
 	err = dbms.AppendDataToTable(GetFilePath(EssentialFiles["USERSFILE"]), NewEntry)
 
+	if err != nil {
+		return err
+	}
+
 	DebugLog("Added new user to the usersfile", "AddUserToDatabase", "SYSTEM", "true")
 	return nil
 }
@@ -363,6 +412,10 @@ func AddUserToChat(UserID int, ChatID int, Admin bool) error {
 	NewUserData.Chats = NewUserDataChats
 
 	err = EditUserData(UserID, NewUserData)
+
+	if err != nil {
+		return err
+	}
 
 	NewChatData := Chat
 	if Admin {
@@ -392,7 +445,7 @@ func EditUserData(UserID int, NewUserData dataTypes.UserData) error {
 	LogErr(err)
 
 	if len(Users) == 0 {
-		return fmt.Errorf("There were no users to edit in the database")
+		return fmt.Errorf("there were no users to edit in the database")
 	}
 	User := Users[UserIndex]
 
@@ -459,7 +512,7 @@ func CreateFriendRequest(SenderUsername string, RecipientUsername string) error 
 			for FriendRequestIndex := range SelectedUser.UserData.FriendRequestsIDs {
 				SelectedFriendRequest := SelectedUser.UserData.FriendRequestsIDs[FriendRequestIndex]
 				if SelectedFriendRequest == NewFriendRequest {
-					return fmt.Errorf("Friend request already exists")
+					return fmt.Errorf("friend request already exists")
 				}
 			}
 
@@ -626,7 +679,6 @@ func HandleApiRequest(Writer http.ResponseWriter, Request *http.Request) {
 
 		default:
 			Writer.Write([]byte("There was an error with your request"))
-			break
 		}
 	} else {
 		fmt.Fprintf(Writer, "Method unsupported on this API")
