@@ -9,7 +9,7 @@
         <script src="js/login.js"></script>
         <script src="js/api.js"></script>
     </head>
-    <body style="padding: 0%; margin: 0%;overflow-y: hidden;" onload="CloseNav();">
+    <body style="padding: 0%; margin: 0%;overflow-y: hidden;" onload="CloseNav();GetFriendSearchBar();">
 
         <div id="SideNav" class="SideNav" style="width:15%;">
             <div id="SideNavContent" style="height: 100%;">
@@ -34,7 +34,6 @@
                                 Diede3x0
                             </div>
                         </div>          
-                    
                     </div>
 
                     <div id="GroupChats">
@@ -56,8 +55,8 @@
 
                         <div style="height: 10%;" class="bottom">
                             <label>Add Friend</label>
-                            <input id="FriendSearchBar" type="text">
-                            <button class="input-type1">Send</button>
+                            <input id="FriendSearchBar" type="text"/>
+                            <button class="input-type1" onclick="SendFriendRequest();">Send</button>
                         </div>
 
                         <div style="margin-top:20%;">

@@ -1,16 +1,22 @@
-window.onload = function(){
-    var Form = document.getElementById("Login-Form");
-    Form.addEventListener("keydown", function (e) {
-        if (e.code === "Enter") {  //checks whether the pressed key is "Enter"
+// Declare gobal variables
+var UsernameEntry;
+var PasswordEntry;
+var LoginForm;
+
+function GetLoginForm(){
+    UsernameEntry = document.getElementById("FormUsername");
+    PasswordEntry = document.getElementById("FormPassword");
+    LoginForm = document.getElementById("Login-Form");
+
+    LoginForm.addEventListener("keydown", function (Event) {
+        if (Event.code === "Enter") {
             Login();
         }
-    });
+    })
 }
 
-function Login(){
-    var UsernameEntry = document.getElementById("FormUsername");
-    var PasswordEntry = document.getElementById("FormPassword");
 
+function Login(){
     var UsernameValue = UsernameEntry.value;
     var PasswordValue = PasswordEntry.value;
 
@@ -20,9 +26,6 @@ function Login(){
 }
 
 function LoginCB(XHRrequest){
-    var UsernameEntry = document.getElementById("FormUsername");
-    var PasswordEntry = document.getElementById("FormPassword");
-
     var ResponseDataRaw = XHRrequest.responseText;
     var ResponseDataSerialised = JSON.parse(ResponseDataRaw);
     var Success = ResponseDataSerialised[0][1];

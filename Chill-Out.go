@@ -125,10 +125,9 @@ func CheckUserExists(Username string, Password string) (bool, error) {
 		return false, err
 	}
 
-	for i := 0; i < len(Users); i++ {
+	for i := range Users {
 		SelectedUser := Users[i]
 		if SelectedUser.Username == Username && SelectedUser.Password == Password {
-			DebugLog("User exists!", "CheckUserExists")
 			return true, nil
 		}
 	}
@@ -308,11 +307,9 @@ func GenerateNewAuthToken(username string) (string, error) {
 		SelectedUser := Users[EntryIndex]
 
 		if SelectedUser.Username == username {
-			FoundUser := Users[EntryIndex]
-			FoundUser.AuthToken = NewAuthToken
-			Users[EntryIndex] = FoundUser
+			SelectedUser.AuthToken = NewAuthToken
 
-			TableEntries[EntryIndex].Data = Users[EntryIndex]
+			TableEntries[EntryIndex].Data = SelectedUser
 			UsersBytes, err := json.MarshalIndent(TableEntries, "", "	")
 
 			if err != nil {
@@ -409,13 +406,21 @@ func EditUserData(UserID int, NewUserData dataTypes.UserData) error {
 func LogErr(err error) {
 
 	if err != nil {
-		DebugLog(err.Error(), "Test", "error", "true")
+		DebugLog(err.Error(), "LogErr", "error", "true")
 		return
 	}
 }
 
 func CreateFriendRequest(SenderUsername string, RecipientUsername string) error {
 	var NewFriendRequest dataTypes.FriendRequest
+
+	if len(RecipientUsername) == 0 {
+		return fmt.Errorf("the username you entered was invalid")
+	}
+
+	if len(SenderUsername) == 0 {
+		return fmt.Errorf("could not validate client username")
+	}
 
 	TableEntries, err := dbms.ReadTable(GetFilePath(EssentialFiles["USERSFILE"]))
 	if err != nil {
@@ -438,6 +443,10 @@ func CreateFriendRequest(SenderUsername string, RecipientUsername string) error 
 			NewFriendRequest.RecieverID = TableEntries[EntryIndex].ID
 		}
 
+	}
+
+	if NewFriendRequest.RecieverID == 0 {
+		return fmt.Errorf("could not find user")
 	}
 
 	// Attach friend request to each of the users in database
@@ -468,7 +477,7 @@ func CreateFriendRequest(SenderUsername string, RecipientUsername string) error 
 // ------------------------------------------------------------------------------------------- //
 
 func main() {
-
+	fmt.Printf("---------------Pre-Initialisation---------------\n")
 	err := CheckEssentialFiles()
 	if err != nil {
 		DebugLog("Failed to load database!		Shutting down.", "CheckEssentialFiles", "error")
@@ -489,7 +498,7 @@ func main() {
 		DebugMode = false
 	}
 
-	DebugLog(fmt.Sprintf("Debugging mode is set to %t", DebugMode), "MAIN", "INFO", "true")
+	DebugLog(fmt.Sprintf("Debugging mode is set to %t", DebugMode), "Main", "INFO", "true")
 
 	fmt.Printf("---------------Initialised---------------\n")
 
@@ -497,7 +506,7 @@ func main() {
 	http.HandleFunc("/api/", HandleApiRequest)
 	http.HandleFunc("/", Servepage)
 
-	fmt.Printf("Starting webserver on port %s\n", WEBSERVERPORT)
+	DebugLog(fmt.Sprintf("Starting webserver on port: %s", WEBSERVERPORT), "Main")
 	if err := http.ListenAndServe(fmt.Sprintf(":%s", WEBSERVERPORT), nil); err != nil {
 		log.Fatal((err))
 	}
@@ -592,9 +601,9 @@ func HandleApiRequest(Writer http.ResponseWriter, Request *http.Request) {
 		case "FriendRequest":
 			RecipientUsername := Request.PostFormValue("RecipientUsername")
 			AuthToken, AuthCookieErr := Request.Cookie("AuthToken")
-
-			AuthPassed, err := CheckAuth(AuthToken, AuthCookieErr)
-			LogErr(err)
+			LogErr(AuthCookieErr)
+			AuthPassed, CheckAuthErr := CheckAuth(AuthToken, AuthCookieErr)
+			LogErr(CheckAuthErr)
 
 			if AuthPassed {
 				User, err := GetUserFromFileWithAuth(AuthToken.Value)
@@ -603,6 +612,7 @@ func HandleApiRequest(Writer http.ResponseWriter, Request *http.Request) {
 					return
 				}
 
+				DebugLog("Trying to create friend request", "HandleAPIReqest")
 				FriendReqErr := CreateFriendRequest(User.Username, RecipientUsername)
 				LogErr(FriendReqErr)
 

@@ -57,12 +57,13 @@ func GenerateNewID(TableName string) int {
 	}
 
 	if len(Entries) == 0 {
-		return NewID
+		return NewID + 1
 	}
 
 	for {
 		FoundID = true
-		NewID += 1
+		NewID++
+
 		for i := range Entries {
 			SelectedEntry := Entries[i]
 
@@ -125,7 +126,7 @@ func FormatEntries[T dataTypes.DBDataType](TableEntries []dataTypes.TableEntry) 
 			return map[int]T{}, fmt.Errorf("")
 		}
 
-		FormattedEntriesMap[ID] = DataStuct
+		FormattedEntriesMap[ID-1] = DataStuct
 	}
 
 	return FormattedEntriesMap, nil
