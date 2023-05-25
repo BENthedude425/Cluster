@@ -43,7 +43,45 @@ function CloseNav(){
     sidenav.style.transform = "translateX(" + -sidenavWidth + "px)";
 }
 
-function SelectChat(element){
-    console.log("called by: "+element.id);
+function GetFriendsList(){
+    API("post", "/get/friends-list", GetFriendsListCB);
+}
 
+function GetFriendsListCB(XHRrequest){
+    const Friends = JSON.parse(XHRrequest.responseText);
+    console.log(Friends);
+
+    for (i=0; i < Friends.length; i++){
+        Username = Friends[i][0];
+        SRC = Friends[i][1];      
+        
+        InsertItem("FriendsList", SRC, Username);
+    }
+}
+
+function InsertItem(parentid, imgsrc="", itemname=""){
+    const ParentElement = document.getElementById(parentid);
+    const NewDiv = document.createElement("div");
+    const IMG = document.createElement("img");
+    var UsernameElement = document.createElement("div");
+    UsernameElement.style = "display:contents;";
+    UsernameElement.innerHTML = itemname;
+
+    IMG.src = imgsrc;
+    IMG.alt = "Avatar";
+
+    ParentElement.appendChild(NewDiv);
+    
+    NewDiv.addEventListener("click", function(Event){
+        SelectItem(NewDiv);
+    });
+
+    NewDiv.appendChild(IMG);
+    NewDiv.appendChild(UsernameElement);
+    NewDiv.id = "Friend-" + Username;
+    NewDiv.style = "width:100%; margin-top: 10%;display: none;";
+}
+
+function SelectItem(element){
+    console.log("called by: "+element.id);
 }

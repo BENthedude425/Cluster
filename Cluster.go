@@ -151,7 +151,7 @@ func CheckUserExists(Username string, Password string) (bool, error) {
 
 func CheckAuth(auth *http.Cookie, AuthCookieErr error) (bool, error) {
 	if AuthCookieErr != nil {
-		return false, fmt.Errorf("failed to recieve the AuthToken cookie")
+		return false, AuthCookieErr
 	}
 
 	if len(auth.Value) == 0 {
@@ -600,6 +600,8 @@ func Test() {
 
 func HandleApiRequest(Writer http.ResponseWriter, Request *http.Request) {
 	if Request.Method == "POST" {
+		AuthToken, AuthCookieErr := Request.Cookie("AuthToken")
+
 		ApiFunc := strings.Split(Request.RequestURI, "/api/")[1]
 		DebugLog(fmt.Sprintf("Incoming post request via the API  %s", Request.RequestURI), "HandleApiRequest")
 		switch ApiFunc {
@@ -636,13 +638,6 @@ func HandleApiRequest(Writer http.ResponseWriter, Request *http.Request) {
 				return
 			}
 		case "logout":
-			AuthToken, AuthCookieErr := Request.Cookie("AuthToken")
-
-			LogErr(AuthCookieErr)
-			if AuthCookieErr != nil {
-				return
-			}
-
 			ResetAuth(AuthToken)
 
 			ResponseDataBytes, err := json.Marshal(ReturnSuccessValue(true, "OK"))
@@ -653,8 +648,7 @@ func HandleApiRequest(Writer http.ResponseWriter, Request *http.Request) {
 			return
 		case "FriendRequest":
 			RecipientUsername := Request.PostFormValue("RecipientUsername")
-			AuthToken, AuthCookieErr := Request.Cookie("AuthToken")
-			LogErr(AuthCookieErr)
+
 			AuthPassed, CheckAuthErr := CheckAuth(AuthToken, AuthCookieErr)
 			LogErr(CheckAuthErr)
 
@@ -676,7 +670,30 @@ func HandleApiRequest(Writer http.ResponseWriter, Request *http.Request) {
 				}
 
 			}
+		case "get/friends-list":
+			var ResponseData [][]string
+			User, err := GetUserFromFileWithAuth(AuthToken.Value)
+			LogErr(err)
 
+			UsersFriendsIDs := User.UserData.FriendIDs
+
+			for FriendIndex := range UsersFriendsIDs {
+				SelectedFriend := UsersFriendsIDs[FriendIndex]
+				User, _, err := GetUserFromID(SelectedFriend)
+				LogErr(err)
+
+				Data := []string{User.Username, "profilepics/default.png"}
+
+				ResponseData = append(ResponseData, Data)
+			}
+
+			ResponseDataBytes, err := json.Marshal(ResponseData)
+			LogErr(err)
+
+			// create a unique id
+			// {username, pfp_url}
+
+			Writer.Write(ResponseDataBytes)
 		default:
 			Writer.Write([]byte("There was an error with your request"))
 		}

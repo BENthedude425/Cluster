@@ -10,8 +10,9 @@ type TableEntry struct {
 }
 
 type UserInfo struct {
-	Username string
-	Password string
+	Username     string
+	Password     string
+	ProfilePicID string
 
 	UserData  UserData
 	AuthToken string

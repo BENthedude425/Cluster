@@ -13,7 +13,7 @@ function GetFriendSearchBar(){
 // API function to interact with the server and callback to a given function when the request is complete
 async function API(method="post", action="", callbackMethod, Form=false, FormData=""){
     var xhr = new XMLHttpRequest();
-    xhr.open(method, "/api"+action);
+    xhr.open(method.toUpperCase(), "/api"+action);
     
     // Set request headers and send form data
     if (Form){
@@ -55,4 +55,9 @@ function SendFriendRequestCB(XHRrequest){
 
 function LongPoll(){
 
+}
+
+function LongPollCB(XHRrequest){
+
+    LongPoll();
 }

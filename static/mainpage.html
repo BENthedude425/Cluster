@@ -9,7 +9,8 @@
         <script src="js/login.js"></script>
         <script src="js/api.js"></script>
     </head>
-    <body style="padding: 0%; margin: 0%;overflow-y: hidden;" onload="CloseNav();GetFriendSearchBar();">
+
+    <body style="padding: 0%; margin: 0%;overflow-y: hidden;" onload="CloseNav();GetFriendSearchBar();GetFriendsList();">
 
         <div id="SideNav" class="SideNav" style="width:15%;">
             <div id="SideNavContent" style="height: 100%;">
@@ -28,11 +29,9 @@
                         </div>
 
 
-                        <div id="example friend" onclick="SelectChat(this)" style="width:100%; margin-top: 10%;display: none;">
-                            <div>
+                        <div id="example friend" onclick="SelectItem(this)" style="width:100%; margin-top: 10%;display: none;" >
                                 <img src="profilepics/profilepic.png">
                                 Diede3x0
-                            </div>
                         </div>          
                     </div>
 
@@ -43,7 +42,7 @@
                             </b>
                         </div>
 
-                        <div id="example group chat" onclick="SelectChat(this)" style="width:100%; margin-top: 10%;display: none;">
+                        <div id="example group chat" onclick="SelectItem(this)" style="width:100%; margin-top: 10%;display: none;">
                             <div>
                                 <img src="groupchatpics/test.png" alt="Avatar">
                                 SpecialGuys
