@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -20,12 +21,16 @@ const WEBSERVERPORT = "8080"
 const CHARSET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
 
 var DebugMode = true
-var PrintServerInfo = false
+var PrintServerInfo = true
 
 var EssentialFiles = map[string]string{
 	"USERSFILE": "UsersData.Json", // Stores User Data
 	"CHATSFILE": "Chats.Json",     // Stores all chats
 	"DEBUGFILE": "Debug.txt",      // Checks to see debug setting
+}
+
+var EssentialDirectories = map[string]string{
+	"USERPROFILEPICS": "ProfilePics",
 }
 
 func ReturnSuccessValue(Success bool, Reason string) []byte {
@@ -99,6 +104,25 @@ func CheckEssentialFiles() error {
 		if err2 != nil {
 			return err2
 		}
+	}
+
+	for DirectoryType, DirectoryName := range EssentialDirectories {
+		DirectoryName = DATAFILESPATH + DirectoryName
+		DebugLog(fmt.Sprintf("Checking if %s exists under %s ...", DirectoryType, DirectoryName), "CheckEssentialFiles", "checking", "false", "false")
+		_, err := os.Stat(DirectoryName)
+
+		if os.IsNotExist(err) {
+			fmt.Printf("[FAILED]\n")
+			DebugLog(fmt.Sprintf("Creating %s ...", DirectoryName), "CheckEssentialFiles", "system", "false", "false")
+			err2 := os.Mkdir(DirectoryName, os.ModeDir)
+
+			if err2 != nil {
+				fmt.Printf("[FAILED]\n")
+				return err2
+			}
+		}
+
+		fmt.Printf("[OK]\n")
 	}
 
 	// Check Each individual file
@@ -434,6 +458,22 @@ func AddUserToChat(UserID int, ChatID int, Admin bool) error {
 	return err
 }
 
+func SaveProfilePic(ProfilePicBytes []byte) (string, error) {
+	ProfilePicID := ""
+	for i := 0; i < 10; i++ {
+		ProfilePicID += fmt.Sprint(rand.Int())
+	}
+
+	err := os.WriteFile(fmt.Sprintf("DB/ProfilePics/%s.png", ProfilePicID), ProfilePicBytes, os.ModeAppend)
+
+	if err != nil {
+		return "", err
+	}
+
+	DebugLog(fmt.Sprintf("Saving new profilepic under: %s", ProfilePicID), "SaveProfilePic")
+	return ProfilePicID, nil
+}
+
 func EditUserData(UserID int, NewUserData dataTypes.UserData) error {
 	TableEntries, err := dbms.ReadTable(GetFilePath(EssentialFiles["USERSFILE"]))
 	LogErr(err)
@@ -601,6 +641,7 @@ func Test() {
 func HandleApiRequest(Writer http.ResponseWriter, Request *http.Request) {
 	if Request.Method == "POST" {
 		AuthToken, AuthCookieErr := Request.Cookie("AuthToken")
+		Request.ParseMultipartForm(Request.ContentLength)
 
 		ApiFunc := strings.Split(Request.RequestURI, "/api/")[1]
 		DebugLog(fmt.Sprintf("Incoming post request via the API  %s", Request.RequestURI), "HandleApiRequest")
@@ -612,6 +653,8 @@ func HandleApiRequest(Writer http.ResponseWriter, Request *http.Request) {
 
 			LoginSuccess, err := CheckUserExists(Username, HashedPassword)
 
+			DebugLog(fmt.Sprintf("incoming login request: %s %s", Username, Password), "MAIN")
+			LogErr(err)
 			if err != nil {
 				return
 			}
@@ -637,6 +680,30 @@ func HandleApiRequest(Writer http.ResponseWriter, Request *http.Request) {
 				Writer.Write(ReturnSuccessValue(false, "FAILED"))
 				return
 			}
+		case "create":
+			Username := Request.FormValue("username")
+			Password := Request.FormValue("password")
+			ProfilePic, ProfilePicHeader, err := Request.FormFile("profile-pic")
+			LogErr(err)
+
+			fmt.Printf("%s\n", ProfilePicHeader)
+			ProfilePicBytes := bytes.Buffer{}
+			_, err = ProfilePic.Read(ProfilePicBytes.Bytes())
+			LogErr(err)
+
+			ProfilePicID, err := SaveProfilePic(ProfilePicBytes.Bytes())
+			LogErr(err)
+
+			NewUser := dataTypes.UserInfo{
+				Username:     Username,
+				Password:     Password,
+				ProfilePicID: ProfilePicID,
+			}
+
+			fmt.Printf("%s\n", NewUser)
+			fmt.Printf("\n\nThe picture data was %s\n\n", ProfilePic)
+			//err := AddUserToDatabase(NewUser)
+			LogErr(err)
 		case "logout":
 			ResetAuth(AuthToken)
 
@@ -647,7 +714,7 @@ func HandleApiRequest(Writer http.ResponseWriter, Request *http.Request) {
 			Writer.Write(ResponseDataBytes)
 			return
 		case "FriendRequest":
-			RecipientUsername := Request.PostFormValue("RecipientUsername")
+			RecipientUsername := Request.FormValue("RecipientUsername")
 
 			AuthPassed, CheckAuthErr := CheckAuth(AuthToken, AuthCookieErr)
 			LogErr(CheckAuthErr)
@@ -719,7 +786,7 @@ func Servepage(Writer http.ResponseWriter, Request *http.Request) {
 		Request.RequestURI = "/index.html"
 	}
 
-	if Request.RequestURI == "/index.html" {
+	if Request.RequestURI == "/index.html" || Request.RequestURI == "/create.html" || Request.RequestURI == "/test.html" {
 		if AuthPassed {
 			// If the client has a correct auth-token
 			http.Redirect(Writer, Request, "/mainpage.html", http.StatusMovedPermanently)

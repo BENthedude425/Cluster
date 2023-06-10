@@ -1,28 +1,62 @@
 // Declare gobal variables
 var UsernameEntry;
 var PasswordEntry;
+var Password2Entry;
 var LoginForm;
+var CreateForm;
 
-function GetLoginForm(){
-    UsernameEntry = document.getElementById("FormUsername");
-    PasswordEntry = document.getElementById("FormPassword");
+function GetCredentialsForms(){
+    UsernameEntry = document.getElementById("username");
+    PasswordEntry = document.getElementById("password");
+    Password2Entry = document.getElementById("password2");
     LoginForm = document.getElementById("Login-Form");
+    CreateForm = document.getElementById("Create-Form");
 
-    LoginForm.addEventListener("keydown", function (Event) {
-        if (Event.code === "Enter") {
-            Login();
-        }
-    })
+    if (LoginForm != undefined){
+        LoginForm.addEventListener("keydown", function(Event) {
+            if (Event.code == "Enter") {
+                Login();
+            }
+        })
+    }
+    
+    if (CreateForm != undefined){
+        CreateForm.addEventListener("keydown", function(Event){
+            if (Event.code == "Enter"){
+                CreateAccount();
+            }
+        })
+    }
 }
 
+function CreateAccount(){
+    FormChildren = CreateForm.children;
+    
+    var Password1;
+    var Password2; 
+
+    Password1 = PasswordEntry.value;
+    Password2 = Password2Entry.value;
+
+    if (Password1 != Password2){
+        PasswordEntry.value = "";
+        Password2Entry.value = "";
+        alert("The two passwords entered do not match!\nPlease re-enter them");
+        return;
+    }
+
+    API("post", "/create", CreateAccountCB, true, FormatForm("Create-Form"));
+}
+
+function CreateAccountCB(XHRrequest){
+    console.log(XHRrequest.responseText);
+}
 
 function Login(){
-    var UsernameValue = UsernameEntry.value;
-    var PasswordValue = PasswordEntry.value;
-
-    var FormData = "username=" + UsernameValue + "&password=" + PasswordValue;
-
-    API("post", "/login", LoginCB, true, FormData)
+    var FormattedFormData = new FormData();
+    FormattedFormData = FormatForm("Login-Form");
+    
+    API("post", "/login", LoginCB, true, FormattedFormData);
 }
 
 function LoginCB(XHRrequest){

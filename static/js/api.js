@@ -11,14 +11,15 @@ function GetFriendSearchBar(){
 }
 
 // API function to interact with the server and callback to a given function when the request is complete
-async function API(method="post", action="", callbackMethod, Form=false, FormData=""){
+async function API(method="post", action="", callbackMethod, Form=false, FormattedFormData= new FormData()){
     var xhr = new XMLHttpRequest();
     xhr.open(method.toUpperCase(), "/api"+action);
     
     // Set request headers and send form data
     if (Form){
-        xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
-        xhr.send(FormData);
+        console.log("settings multipart");
+        xhr.setRequestHeader('Content-Type', 'multipart/form-data');
+        xhr.send(FormattedFormData);
     }else{
         xhr.send();        
     }
@@ -33,10 +34,10 @@ async function API(method="post", action="", callbackMethod, Form=false, FormDat
 
 function SendFriendRequest(){
     var RecipientUsername = FriendSearchBar.value;
-    var FormData = "RecipientUsername=" + RecipientUsername;
+    var FormattedFormData = "RecipientUsername=" + RecipientUsername;
 
     console.log("Sending friend request to: " + RecipientUsername)
-    API("post", "/FriendRequest", SendFriendRequestCB, true, FormData);
+    API("post", "/FriendRequest", SendFriendRequestCB, true, FormattedFormData);
 }
 
 function SendFriendRequestCB(XHRrequest){
@@ -52,6 +53,22 @@ function SendFriendRequestCB(XHRrequest){
         alert(ResponseTextSerialized[0][2])
     }
 }
+
+function FormatForm(formid){
+    var FormattedData = new FormData();
+    const Form = document.getElementById(formid);
+    const FormChildren = Form.children;
+
+    for (i = 0; i < FormChildren.length; i++){
+        var SelectedChild = FormChildren[i];
+        
+        if(SelectedChild.nodeName == "INPUT"){
+            FormattedData.append(SelectedChild.id, SelectedChild.value);
+        }
+    }
+
+    return FormattedData;
+} 
 
 function LongPoll(){
 

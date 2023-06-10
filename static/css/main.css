@@ -33,15 +33,32 @@ body{
     width: 30%;
     padding: 50px;
     margin: auto;
+    justify-content: center;
 
     border: solid black 2px;
     border-radius: 2px;
     box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
 }
 
-.main_container input{
+.form_container{
+    height: 80%;
+    width: 100%;
+    padding: 12.5%;
+    position: relative;
+    display: grid;
+}
+
+.form_container input{
     height: 8.56%;
     width: 70%;
+}
+
+.input-generic{
+    position: absolute;
+    display: flex;
+    text-align: center;
+    justify-content: center;
+    justify-self: center
 }
 
 .input-type1{
