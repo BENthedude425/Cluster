@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
 	"log"
 	"math/rand"
@@ -30,7 +31,7 @@ var EssentialFiles = map[string]string{
 }
 
 var EssentialDirectories = map[string]string{
-	"USERPROFILEPICS": "ProfilePics",
+	"USERPROFILEPICS": "Static/ProfilePics",
 }
 
 func ReturnSuccessValue(Success bool, Reason string) []byte {
@@ -107,7 +108,6 @@ func CheckEssentialFiles() error {
 	}
 
 	for DirectoryType, DirectoryName := range EssentialDirectories {
-		DirectoryName = DATAFILESPATH + DirectoryName
 		DebugLog(fmt.Sprintf("Checking if %s exists under %s ...", DirectoryType, DirectoryName), "CheckEssentialFiles", "checking", "false", "false")
 		_, err := os.Stat(DirectoryName)
 
@@ -458,19 +458,20 @@ func AddUserToChat(UserID int, ChatID int, Admin bool) error {
 	return err
 }
 
-func SaveProfilePic(ProfilePicBytes []byte) (string, error) {
+func SaveProfilePic(ProfilePicBytes []byte, FileExtension string) (string, error) {
 	ProfilePicID := ""
-	for i := 0; i < 10; i++ {
-		ProfilePicID += fmt.Sprint(rand.Int())
+	for i := 0; i < 20; i++ {
+		ProfilePicID += fmt.Sprint(rand.Intn(9))
 	}
+	ProfilePicID += "." + FileExtension
 
-	err := os.WriteFile(fmt.Sprintf("DB/ProfilePics/%s.png", ProfilePicID), ProfilePicBytes, os.ModeAppend)
+	err := os.WriteFile(fmt.Sprintf("Static/ProfilePics/%s", ProfilePicID), ProfilePicBytes, os.ModeAppend)
 
 	if err != nil {
 		return "", err
 	}
 
-	DebugLog(fmt.Sprintf("Saving new profilepic under: %s", ProfilePicID), "SaveProfilePic")
+	DebugLog("Saving new profilepic", "SaveProfilePic")
 	return ProfilePicID, nil
 }
 
@@ -640,6 +641,7 @@ func Test() {
 
 func HandleApiRequest(Writer http.ResponseWriter, Request *http.Request) {
 	if Request.Method == "POST" {
+
 		AuthToken, AuthCookieErr := Request.Cookie("AuthToken")
 		Request.ParseMultipartForm(Request.ContentLength)
 
@@ -686,12 +688,20 @@ func HandleApiRequest(Writer http.ResponseWriter, Request *http.Request) {
 			ProfilePic, ProfilePicHeader, err := Request.FormFile("profile-pic")
 			LogErr(err)
 
-			fmt.Printf("%s\n", ProfilePicHeader)
-			ProfilePicBytes := bytes.Buffer{}
-			_, err = ProfilePic.Read(ProfilePicBytes.Bytes())
+			User, _ := GetUserFromFileWithUsername(Username)
+
+			//Check if the returned user is blank
+			if User.Username == Username {
+				DebugLog("Attempted account creation with an existing user", "HandleApiRequest")
+				Writer.Write(ReturnSuccessValue(false, "Attempted account creation with an existing user"))
+				return
+			}
+
+			ProfilePicBytes := bytes.NewBuffer(nil)
+			_, err = io.Copy(ProfilePicBytes, ProfilePic)
 			LogErr(err)
 
-			ProfilePicID, err := SaveProfilePic(ProfilePicBytes.Bytes())
+			ProfilePicID, err := SaveProfilePic(ProfilePicBytes.Bytes(), strings.Split(ProfilePicHeader.Filename, ".")[1])
 			LogErr(err)
 
 			NewUser := dataTypes.UserInfo{
@@ -700,9 +710,7 @@ func HandleApiRequest(Writer http.ResponseWriter, Request *http.Request) {
 				ProfilePicID: ProfilePicID,
 			}
 
-			fmt.Printf("%s\n", NewUser)
-			fmt.Printf("\n\nThe picture data was %s\n\n", ProfilePic)
-			//err := AddUserToDatabase(NewUser)
+			err = AddUserToDatabase(NewUser)
 			LogErr(err)
 		case "logout":
 			ResetAuth(AuthToken)
@@ -714,7 +722,7 @@ func HandleApiRequest(Writer http.ResponseWriter, Request *http.Request) {
 			Writer.Write(ResponseDataBytes)
 			return
 		case "FriendRequest":
-			RecipientUsername := Request.FormValue("RecipientUsername")
+			RecipientUsername := Request.PostFormValue("RecipientUsername")
 
 			AuthPassed, CheckAuthErr := CheckAuth(AuthToken, AuthCookieErr)
 			LogErr(CheckAuthErr)
@@ -749,7 +757,7 @@ func HandleApiRequest(Writer http.ResponseWriter, Request *http.Request) {
 				User, _, err := GetUserFromID(SelectedFriend)
 				LogErr(err)
 
-				Data := []string{User.Username, "profilepics/default.png"}
+				Data := []string{User.Username, fmt.Sprintf("ProfilePics/%s", User.ProfilePicID)}
 
 				ResponseData = append(ResponseData, Data)
 			}
@@ -779,7 +787,9 @@ func Servepage(Writer http.ResponseWriter, Request *http.Request) {
 	AuthPassed, err := CheckAuth(AuthToken, AuthCookieErr)
 
 	if err != nil {
-		LogErr(err)
+		if err != http.ErrNoCookie {
+			LogErr(err)
+		}
 	}
 
 	if Request.RequestURI == "/" {

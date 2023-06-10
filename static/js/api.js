@@ -1,7 +1,7 @@
 var FriendSearchBar;
 
 function GetFriendSearchBar(){
-    FriendSearchBar = document.getElementById("FriendSearchBar");
+    FriendSearchBar = document.getElementById("RecipientUsername");
 
     FriendSearchBar.addEventListener("keydown", function(Event){
         if(Event.code == "Enter"){
@@ -17,8 +17,6 @@ async function API(method="post", action="", callbackMethod, Form=false, Formatt
     
     // Set request headers and send form data
     if (Form){
-        console.log("settings multipart");
-        xhr.setRequestHeader('Content-Type', 'multipart/form-data');
         xhr.send(FormattedFormData);
     }else{
         xhr.send();        
@@ -34,7 +32,7 @@ async function API(method="post", action="", callbackMethod, Form=false, Formatt
 
 function SendFriendRequest(){
     var RecipientUsername = FriendSearchBar.value;
-    var FormattedFormData = "RecipientUsername=" + RecipientUsername;
+    var FormattedFormData = FormatForm("FriendRequestForm")
 
     console.log("Sending friend request to: " + RecipientUsername)
     API("post", "/FriendRequest", SendFriendRequestCB, true, FormattedFormData);
@@ -63,7 +61,11 @@ function FormatForm(formid){
         var SelectedChild = FormChildren[i];
         
         if(SelectedChild.nodeName == "INPUT"){
-            FormattedData.append(SelectedChild.id, SelectedChild.value);
+            if (SelectedChild.type == "file"){
+                FormattedData.append(SelectedChild.id, SelectedChild.files[0])
+            }else{
+                FormattedData.append(SelectedChild.id, SelectedChild.value);
+            }
         }
     }
 

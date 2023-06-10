@@ -49,7 +49,11 @@ function CreateAccount(){
 }
 
 function CreateAccountCB(XHRrequest){
-    console.log(XHRrequest.responseText);
+    SuccessResponse = JSON.parse(XHRrequest.responseText);
+
+    if(SuccessResponse[0][1] == "false"){
+        alert(SuccessResponse[0][2]);
+    }
 }
 
 function Login(){
