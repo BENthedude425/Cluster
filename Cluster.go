@@ -296,27 +296,27 @@ func GetUserFromFileWithUsername(username string) (dataTypes.UserInfo, error) {
 	return User, fmt.Errorf("could not find user in database")
 }
 
-func GetUserFromFileWithAuth(authToken string) (dataTypes.UserInfo, error) {
+func GetUserFromFileWithAuth(authToken string) (dataTypes.UserInfo, int, error) {
 	TableEntries, err := dbms.ReadTable(GetFilePath(EssentialFiles["USERSFILE"]))
 
 	if err != nil {
-		return dataTypes.UserInfo{}, err
+		return dataTypes.UserInfo{}, 0, err
 	}
 
 	Users, err := dbms.FormatEntries[dataTypes.UserInfo](TableEntries)
 
 	if err != nil {
-		return dataTypes.UserInfo{}, err
+		return dataTypes.UserInfo{}, 0, err
 	}
 
-	for i := 0; i < len(Users); i++ {
-		SelectedUser := Users[i]
+	for UserIndex := range Users {
+		SelectedUser := Users[UserIndex]
 		if SelectedUser.AuthToken == authToken {
-			return SelectedUser, nil
+			return SelectedUser, UserIndex, nil
 		}
 	}
 
-	return dataTypes.UserInfo{}, fmt.Errorf("could not find user from auth: %s", authToken)
+	return dataTypes.UserInfo{}, 0, fmt.Errorf("could not find user from auth: %s", authToken)
 }
 
 func ResetAuth(AuthToken *http.Cookie) error {
@@ -460,10 +460,35 @@ func AddUserToChat(UserID int, ChatID int, Admin bool) error {
 
 func SaveProfilePic(ProfilePicBytes []byte, FileExtension string) (string, error) {
 	ProfilePicID := ""
-	for i := 0; i < 20; i++ {
-		ProfilePicID += fmt.Sprint(rand.Intn(9))
+
+	// keep looping until a unique profile picture ID is found
+	for {
+		UniqueID := true
+
+		for i := 0; i < 20; i++ {
+			ProfilePicID += fmt.Sprint(rand.Intn(9))
+		}
+
+		ProfilePicID += "." + FileExtension
+
+		DirEntries, err := os.ReadDir("static/ProfilePics")
+
+		if err != nil {
+			return "", err
+		}
+
+		for FileIndex := range DirEntries {
+			SelectedFile := DirEntries[FileIndex]
+
+			if SelectedFile.Name() == ProfilePicID {
+				UniqueID = false
+			}
+		}
+
+		if UniqueID {
+			break
+		}
 	}
-	ProfilePicID += "." + FileExtension
 
 	err := os.WriteFile(fmt.Sprintf("Static/ProfilePics/%s", ProfilePicID), ProfilePicBytes, os.ModeAppend)
 
@@ -685,6 +710,13 @@ func HandleApiRequest(Writer http.ResponseWriter, Request *http.Request) {
 		case "create":
 			Username := Request.FormValue("username")
 			Password := Request.FormValue("password")
+			Password2 := Request.FormValue("password2")
+
+			if Password != Password2 {
+				DebugLog("Entered passwords do not match", "HandleApiRequest")
+				Writer.Write(ReturnSuccessValue(false, "Entered passwords do not match"))
+			}
+
 			ProfilePic, ProfilePicHeader, err := Request.FormFile("profile-pic")
 			LogErr(err)
 
@@ -728,7 +760,7 @@ func HandleApiRequest(Writer http.ResponseWriter, Request *http.Request) {
 			LogErr(CheckAuthErr)
 
 			if AuthPassed {
-				User, err := GetUserFromFileWithAuth(AuthToken.Value)
+				User, _, err := GetUserFromFileWithAuth(AuthToken.Value)
 				if err != nil {
 					fmt.Print(err)
 					return
@@ -747,7 +779,7 @@ func HandleApiRequest(Writer http.ResponseWriter, Request *http.Request) {
 			}
 		case "get/friends-list":
 			var ResponseData [][]string
-			User, err := GetUserFromFileWithAuth(AuthToken.Value)
+			User, _, err := GetUserFromFileWithAuth(AuthToken.Value)
 			LogErr(err)
 
 			UsersFriendsIDs := User.UserData.FriendIDs
@@ -769,6 +801,45 @@ func HandleApiRequest(Writer http.ResponseWriter, Request *http.Request) {
 			// {username, pfp_url}
 
 			Writer.Write(ResponseDataBytes)
+		case "get/pending-friend-requests":
+			var ResponseData [][]string
+			User, UserIndex, err := GetUserFromFileWithAuth(AuthToken.Value)
+			UserID := UserIndex + 1
+			fmt.Printf("\n%s is accessing friend requests: %d\n", User.Username, UserID)
+
+			LogErr(err)
+
+			FriendRequestIDS := User.UserData.FriendRequestsIDs
+			fmt.Print(User.UserData.FriendRequestsIDs)
+			for FriendRequestIndex := range FriendRequestIDS {
+				var FriendRequestDirection string
+				SelectedFriendRequest := FriendRequestIDS[FriendRequestIndex]
+				SelectedUserData, _, err := GetUserFromID(SelectedFriendRequest.RecieverID)
+				LogErr(err)
+
+				//fmt.Printf("\nThe friend request is: %s\n%d\n%s\n", SelectedFriendRequest, FriendRequestIndex, FriendRequestIDS)
+
+				// set the incoming/outgoing direction
+				if SelectedFriendRequest.InitiatorID == UserID {
+					FriendRequestDirection = "OUTGOING"
+				} else {
+					FriendRequestDirection = "INCOMING"
+				}
+
+				ResponseDataSlice := [][]string{
+					{FriendRequestDirection, SelectedUserData.Username},
+				}
+
+				ResponseData = append(ResponseData, ResponseDataSlice...)
+			}
+
+			ResponseDataBytes, err := json.Marshal(ResponseData)
+			LogErr(err)
+
+			_, err = Writer.Write(ResponseDataBytes)
+			LogErr(err)
+		case "test":
+			APITEST()
 		default:
 			Writer.Write([]byte("There was an error with your request"))
 		}
@@ -811,4 +882,27 @@ func Servepage(Writer http.ResponseWriter, Request *http.Request) {
 	}
 
 	http.ServeFile(Writer, Request, fmt.Sprintf("static/%s", Request.RequestURI[1:]))
+}
+
+func APITEST() {
+	Users, err := dbms.ReadTable(GetFilePath(EssentialFiles["USERSFILE"]))
+	LogErr(err)
+
+	Usersf, err := dbms.FormatEntries[dataTypes.UserInfo](Users)
+	LogErr(err)
+
+	fmt.Print("\n\n")
+
+	for g := range Users {
+		fmt.Print(Users[g])
+		fmt.Print("\n")
+	}
+
+	fmt.Print("\n\n")
+	for g := range Users {
+		fmt.Print(Usersf[g])
+		fmt.Print("\n")
+	}
+	fmt.Print("\n")
+
 }

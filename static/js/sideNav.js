@@ -45,17 +45,27 @@ function CloseNav(){
 
 function GetFriendsList(){
     API("post", "/get/friends-list", GetFriendsListCB);
+    API("post", "/get/pending-friend-requests", GetPendingFriendRequestsCB);
 }
 
 function GetFriendsListCB(XHRrequest){
     const Friends = JSON.parse(XHRrequest.responseText);
-    console.log(Friends);
 
-    for (i=0; i < Friends.length; i++){
+    for (i = 0; i < Friends.length; i++){
         Username = Friends[i][0];
         SRC = Friends[i][1];      
         
         InsertItem("FriendsList", SRC, Username);
+    }
+}
+
+function GetPendingFriendRequestsCB(XHRrequest){
+    console.log(XHRrequest.responseText);
+    ResponseTextSerialised = JSON.parse(XHRrequest.responseText);
+    
+    console.log(ResponseTextSerialised);
+    for(i = 0; i < ResponseTextSerialised.length; i++){
+        
     }
 }
 

@@ -10,6 +10,11 @@ import (
 
 func ReadFile(FileName string) ([]byte, error) {
 	File, err := os.Open(FileName)
+
+	if err != nil {
+		return []byte{}, err
+	}
+
 	defer File.Close()
 
 	FileSystem, err := os.Stat(FileName)
@@ -110,8 +115,8 @@ func AppendDataToTable(TableName string, Data dataTypes.TableEntry) error {
 func FormatEntries[T dataTypes.DBDataType](TableEntries []dataTypes.TableEntry) (map[int]T, error) {
 	var DataStuct T
 	FormattedEntriesMap := make(map[int]T)
-	for i := range TableEntries {
-		SelectedEntry := TableEntries[i]
+	for EntryIndex := range TableEntries {
+		SelectedEntry := TableEntries[EntryIndex]
 
 		ID := SelectedEntry.ID
 		Data, err := json.Marshal(SelectedEntry.Data)
@@ -127,7 +132,15 @@ func FormatEntries[T dataTypes.DBDataType](TableEntries []dataTypes.TableEntry) 
 		}
 
 		FormattedEntriesMap[ID-1] = DataStuct
+		fmt.Printf("\nData struct")
+		fmt.Print(DataStuct)
 	}
 
+	for g := range FormattedEntriesMap {
+		fmt.Printf("\nformatted entrieds\n")
+		fmt.Print(FormattedEntriesMap[g])
+
+		fmt.Printf("\n\n")
+	}
 	return FormattedEntriesMap, nil
 }

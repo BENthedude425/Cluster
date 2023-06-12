@@ -4,6 +4,8 @@ workspace
 .vscode
 pkg
 bin
+static/ProfilePics
+static/GroupChatPics
 
 # https://github.com/golang-standards/project-template/blob/master/.gitignore
 
